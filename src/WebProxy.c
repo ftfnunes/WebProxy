@@ -32,7 +32,7 @@ int main() {
 	pthread_t threads[MAX_N_OF_CONNECTIONS];
 	t_socket createdSockets[MAX_N_OF_CONNECTIONS];
 	int nextThread = 0;
-	int sockAddrSize = (sizeof(struct sockaddr_in));
+	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 
 	configureSockAddr(&local, 1050, INADDR_ANY);
 	srvSocket = socket(AF_INET, SOCK_STREAM, 0);
