@@ -9,16 +9,17 @@ ODIR=obj
 BDIR=bin
 
 OBJS= RequestValidator.o WebCache.o HttpHandler.o
-OBJS_PATH= obj/RequestValidator.o obj/WebCache.o obj/HttpHandler.o
+OBJS_PATH= $(ODIR)/RequestValidator.o $(ODIR)/WebCache.o $(ODIR)/HttpHandler.o
+HEADERS= $(IDIR)/RequestValidator.h $(IDIR)/WebCache.h $(IDIR)/HttpHandler.h $(IDIR)/Common.h
 
 _make_obj := $(shell mkdir -p obj)
 _make_bin := $(shell mkdir -p bin)
 
-WebProxy: $(OBJS) $(SRC_DIR)/WebProxy.c 
+WebProxy: $(SRC_DIR)/WebProxy.c $(OBJS_PATH) $(HEADERS)
 	$(CC) -o $(BDIR)/$@ $(SRC_DIR)/WebProxy.c $(OBJS_PATH) $(CFLAGS)
 
-%.o: $(SRC_DIR)/%.c $(IDIR)/%.h
-	$(CC) $(CFLAGS) -c $< -o $(ODIR)/$@
+$(ODIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: clean
 

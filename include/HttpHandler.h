@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum MethodType{
+typedef enum methodType{
 	GET,
 	POST,
 	DELETE,
@@ -10,7 +10,7 @@ enum MethodType{
 	OPTIONS,
 	TRACE,
 	CONNECT
-}
+} MethodType;
 
 typedef struct headerField{
 	char *name;
