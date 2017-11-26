@@ -1,6 +1,6 @@
 IDIR =./include
 CC=gcc
-CFLAGS= -Wall -g -I$(IDIR)
+CFLAGS= -Wall -g -I$(IDIR) -lcrypto
 
 SRC_DIR = ./src
 

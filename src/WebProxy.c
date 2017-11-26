@@ -6,12 +6,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*void *handleSocket(void *arg) {
+	Socket *socket = (Socket *)arg;
+	HttpResponse *response = NULL;
+	HttpRequest *request = HttpReceive(socket);
+	ValidationResult *validation = ValidateRequest(request);
+	
+	if (validation->isOnBlackList || (!validation->isOnWhiteList && validation->isOnDeniedTerm)){
+		HttpSendDeniedResult(socket, request, validation);
+		close(socket)
+		return NULL;
+	}
+	if (request->type != MethodType.PUT && request->type != MethodType.POST && request->type != MethodType.DELETE && request->type != MethodType.PATCH) {
+		response = getResponseFromCache(request);
+	}
+	
+	if (response == NULL) {
+		response = httpSendRequest(request, socket);
+		storeInCache(Response, request);
+	} else if(isExpired(response)) {
+		response = httpGetIfModified(request, response, socket);
+	}
+	
+	if(!validation->isOnWhiteList) {
+		validation = validateResponse(response);
+		if (validation->isOnDeniedTerm){
+			HttpSendDeniedResult(socket, request, validation);
+			close(socket);
+			return NULL;
+		}
+	}
+	
+	HttpSendResponse(socket, response)
+	close(socket)
+}*/
+
 int main() {
 	int srvSocket, rqstSocket;
 	struct sockaddr_in* remote;
 	struct sockaddr_in local;
 	pthread_t threads[MAX_N_OF_CONNECTIONS];
-	t_socket createdSockets[MAX_N_OF_CONNECTIONS];
+	Socket createdSockets[MAX_N_OF_CONNECTIONS];
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef HTTP_HANDLER
+
+#define HTTP_HANDLER
 typedef enum methodType{
 	GET,
 	POST,
@@ -9,7 +12,8 @@ typedef enum methodType{
 	HEAD,
 	OPTIONS,
 	TRACE,
-	CONNECT
+	CONNECT,
+	PATCH
 } MethodType;
 
 typedef struct headerField{
@@ -24,6 +28,7 @@ typedef struct httpRequest{
 	char *version;
 	char *hostname;
 	char *body;
+	char *raw;
 	/* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	HeaderField *headers;
 	int headerCount;
@@ -38,3 +43,5 @@ typedef struct httpResponse{
 	HeaderField *headers;
 	int headerCount;
 } HttpResponse;
+
+#endif
