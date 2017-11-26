@@ -1,8 +1,9 @@
 #include "WebCache.h"
 
+// retorna um HttpResponse alocado dinamicamente.
 HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *hash = calculateHash(request->raw);
-	char *filename = malloc(CACHE_FILENAME_SIZE);
+	char filename[CACHE_FILENAME_SIZE];
 	char *file = NULL;
 	HttpResponse *httpResponse = NULL;
 
@@ -11,8 +12,8 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	if (access(filename, F_OK) == 0) {
 		//O arquivo existe
 		file = readAsString(filename);
-		httpResponse = httpParse(file);
-		return httpResponse
+		httpResponse = httpParseResponse(file);
+		return httpResponse;
 	}
 
 	return NULL;
@@ -25,25 +26,43 @@ int isExpired(HttpResponse *response){
 	time_t now;
 
 	time(&now);
-	expiresDateStr = httpFindHeaderByName(EXPIRES_HEADER);
+	expiresDateStr = findHeaderByName(EXPIRES_HEADER, response->headers, response->headerCount);
 
 	if (expiresDateStr != NULL) {
 		expiresDate = convertToTime(expiresDateStr, 0);
 		if (expiresDate > now) {
-			return TRUE;;
+			return TRUE;
 		}
 	} else {
-		responseDateStr = httpFindHeaderByName(DATE_HEADER);
+		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
 			return TRUE;;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
-		if (responseDate > now) {
+		if (expiresDate > now) {
 			return TRUE;;
 		}
 	}
 
 	return FALSE;
+}
+
+void storeInCache(HttpResponse *response, HttpRequest* request) {
+	char *hash = calculateHash(request->raw);
+	char filename[CACHE_FILENAME_SIZE];
+	FILE *fp;
+
+	sprintf(filename, "%s.cache", hash);
+
+	fp = fopen(filename, "w");
+
+	if (fp == NULL) {
+		//TODO: Tratamento de erro
+	}
+
+	fwrite(response->raw, strlen(request->raw), 1, fp);
+
+	fclose(fp);
 }
 
 //funções utilitárias
@@ -59,8 +78,8 @@ char convertToHexa(unsigned char c) {
 	return (char) c+'a'-10;
 }
 
-// Retorna a string do hash em base 16.
-char *calculateHash(char *request){
+// Retorna a string do hash em base 16, alocada dinamicamente.
+char *calculateHash(char *request) {
 	char *result = malloc(HASH_SIZE);
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	char buffer[2];
@@ -79,7 +98,8 @@ char *calculateHash(char *request){
 	return result;
 }
 
-char *readAsString(char *filename){
+//Resultado é alocado dinamicamente.
+char *readAsString(char *filename) {
 	FILE *fp = fopen(filename, "r");
 	char *file = NULL;
 	long int fileSize = 0;
@@ -96,6 +116,8 @@ char *readAsString(char *filename){
 
 	fclose(fp);
 	file[fileSize] = '\0';
+
+	return file;
 }
 
 time_t convertToTime(char *dateStr, int minutesToAdd){
@@ -104,5 +126,15 @@ time_t convertToTime(char *dateStr, int minutesToAdd){
 	strptime(dateStr, "%a, %d %b %Y %H:%M:%S GMT", &date);
 	date.tm_min += minutesToAdd; 
 	return timegm(&date);
+}
+
+char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
+	int i;
+	for (i = 0; i < headerCount; ++i) {
+		if (strcmp(headers[i].name, name) == 0) {
+			return headers[i].value;
+		}
+	}
+	return NULL;
 }
 

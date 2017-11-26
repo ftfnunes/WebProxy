@@ -1,7 +1,6 @@
 #include "HttpHandler.h"
 #include "RequestValidator.h"
 #include "WebCache.h"
-#include "Common.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,11 +8,11 @@
 /*void *handleSocket(void *arg) {
 	Socket *socket = (Socket *)arg;
 	HttpResponse *response = NULL;
-	HttpRequest *request = HttpReceive(socket);
-	ValidationResult *validation = ValidateRequest(request);
+	HttpRequest *request = httpReceive(socket);
+	ValidationResult *validation = validateRequest(request);
 	
 	if (validation->isOnBlackList || (!validation->isOnWhiteList && validation->isOnDeniedTerm)){
-		HttpSendDeniedResult(socket, request, validation);
+		httpSendDeniedResult(socket, request, validation);
 		close(socket)
 		return NULL;
 	}
@@ -23,9 +22,10 @@
 	
 	if (response == NULL) {
 		response = httpSendRequest(request, socket);
-		storeInCache(Response, request);
+		storeInCache(response, request);
 	} else if(isExpired(response)) {
 		response = httpGetIfModified(request, response, socket);
+		storeInCache(response, request);
 	}
 	
 	if(!validation->isOnWhiteList) {
@@ -39,8 +39,8 @@
 	
 	HttpSendResponse(socket, response)
 	close(socket)
-}*/
-
+}
+*/
 int main() {
 	int srvSocket, rqstSocket;
 	struct sockaddr_in* remote;

@@ -45,4 +45,8 @@ typedef struct httpResponse{
 	int headerCount;
 } HttpResponse;
 
+HttpResponse *httpParseResponse(char *response);
+
+
+
 #endif
