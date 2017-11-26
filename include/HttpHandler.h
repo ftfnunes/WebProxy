@@ -39,6 +39,7 @@ typedef struct httpResponse{
 	short statusCode;
 	char *reasonPhrase;
 	char *body;
+	char *raw;
 	/* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	HeaderField *headers;
 	int headerCount;
