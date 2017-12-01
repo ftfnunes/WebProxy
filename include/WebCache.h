@@ -3,9 +3,11 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include <unistd.h>
+#include <time.h>
+#include <pthread.h>
 #include "HttpHandler.h"
 #include "Common.h"
-#include <time.h>
+#include "Log.h"
 
 #ifndef WEB_CACHE
 #define WEB_CACHE
@@ -15,6 +17,9 @@
 #define EXPIRES_HEADER "Expires"
 #define DATE_HEADER "Date"
 #define CACHED_RESPONSE_LIFETIME 5 //In minutes
+#define SIZE_OF_MESSAGE 40
+
+pthread_mutex_t cacheMutex;
 
 HttpResponse *getResponseFromCache(HttpRequest* request);
 
@@ -31,5 +36,7 @@ char *readAsString(char *filename);
 time_t convertToTime(char *dateStr, int minutesToAdd);
 
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount);
+
+void initializeCache();
 
 #endif
