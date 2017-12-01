@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "Common.h"
 
 #ifndef HTTP_HANDLER
 
@@ -44,6 +45,16 @@ typedef struct httpResponse{
 	HeaderField *headers;
 	int headerCount;
 } HttpResponse;
+
+
+HttpResponse *httpReceiveResponse(ThreadContext *context);
+HttpRequest *httpReceiveRequest(ThreadContext *context);
+
+void ResponsePrettyPrinter(HttpResponse *response);
+void RequestPrettyPrinter(HttpRequest *request);
+
+HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
+char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size);
 
 HttpResponse *httpParseResponse(char *response);
 
