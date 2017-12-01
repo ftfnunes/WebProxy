@@ -13,7 +13,7 @@
 typedef struct socket_str{
 	struct sockaddr_in* sockAddr;
 	int socket;
-} Socket;
+} ThreadContext;
 
 void configureSockAddr(struct sockaddr_in* sockAddr, int port, unsigned long addr);
 #endif
