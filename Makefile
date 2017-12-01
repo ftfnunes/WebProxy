@@ -8,7 +8,7 @@ ODIR=obj
 
 BDIR=bin
 
-OBJS= RequestValidator.o WebCache.o HttpHandler.o Common.o
+OBJS= RequestValidator.o WebCache.o HttpHandler.o Common.o Log.o
 OBJS_PATH= $(ODIR)/RequestValidator.o $(ODIR)/WebCache.o $(ODIR)/HttpHandler.o $(ODIR)/Common.o
 
 _make_obj := $(shell mkdir -p obj)
@@ -23,4 +23,4 @@ WebProxy: $(SRC_DIR)/WebProxy.c $(OBJS)
 .PHONY: clean
 
 clean:
-	rm -f $(BDIR)/* $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+	rm -f $(BDIR)/* $(ODIR)/*.o *~ core $(INCDIR)/*~

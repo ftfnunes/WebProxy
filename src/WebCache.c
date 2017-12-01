@@ -5,6 +5,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *hash = calculateHash(request->raw);
 	char filename[CACHE_FILENAME_SIZE];
 	char *file = NULL;
+	char *logStr = (char *)malloc((strlen(request->raw)+SIZE_OF_MESSAGE)*sizeof(char));
 	HttpResponse *httpResponse = NULL;
 
 	sprintf(filename, "%s.cache", hash);
@@ -13,6 +14,10 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 		//O arquivo existe
 		file = readAsString(filename);
 		httpResponse = httpParseResponse(file);
+
+		sprintf(logStr, "Successfully obtained response to request:\n %s", request->raw);
+		logSuccess(logStr);
+		free(logStr);
 		return httpResponse;
 	}
 
@@ -23,9 +28,8 @@ int isExpired(HttpResponse *response){
 	char *expiresDateStr = NULL;
 	char *responseDateStr = NULL;
 	time_t expiresDate;
-	time_t now;
+	time_t now = time(NULL);
 
-	time(&now);
 	expiresDateStr = findHeaderByName(EXPIRES_HEADER, response->headers, response->headerCount);
 
 	if (expiresDateStr != NULL) {
@@ -50,19 +54,26 @@ int isExpired(HttpResponse *response){
 void storeInCache(HttpResponse *response, HttpRequest* request) {
 	char *hash = calculateHash(request->raw);
 	char filename[CACHE_FILENAME_SIZE];
+	char logStr[200];
 	FILE *fp;
 
 	sprintf(filename, "%s.cache", hash);
 
+	pthread_mutex_lock(&cacheMutex);
+
 	fp = fopen(filename, "w");
 
 	if (fp == NULL) {
-		//TODO: Tratamento de erro
+		sprintf(logStr, "The file %s could not be opened.", filename);
+		logError(logStr);
+		pthread_mutex_unlock(&cacheMutex);
+		return;
 	}
 
-	fwrite(response->raw, strlen(request->raw), 1, fp);
+	fprintf(fp, "%s", response->raw);
 
 	fclose(fp);
+	pthread_mutex_unlock(&cacheMutex);
 }
 
 //funções utilitárias
@@ -103,9 +114,12 @@ char *readAsString(char *filename) {
 	FILE *fp = fopen(filename, "r");
 	char *file = NULL;
 	long int fileSize = 0;
+	char errorStr[200];
 
 	if (fp == NULL) {
-		//TODO: Tratamento de erro
+		sprintf(errorStr, "The file %s could not be opened.", filename);
+		logError(errorStr);
+		return NULL;
 	}
 
 	fseek(fp, 0, SEEK_END);
@@ -124,7 +138,7 @@ time_t convertToTime(char *dateStr, int minutesToAdd){
 	struct tm date;
 
 	strptime(dateStr, "%a, %d %b %Y %H:%M:%S GMT", &date);
-	date.tm_min += minutesToAdd; 
+	date.tm_min += minutesToAdd;
 	return timegm(&date);
 }
 
@@ -138,3 +152,6 @@ char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
 	return NULL;
 }
 
+void initializeCache() {
+	pthread_mutex_init(&cacheMutex, NULL);
+}

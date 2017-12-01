@@ -1,6 +1,7 @@
 #include "HttpHandler.h"
 #include "RequestValidator.h"
 #include "WebCache.h"
+#include "Log.c"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 	HttpResponse *response = NULL;
 	HttpRequest *request = httpReceive(socket);
 	ValidationResult *validation = validateRequest(request);
-	
+
 	if (validation->isOnBlackList || (!validation->isOnWhiteList && validation->isOnDeniedTerm)){
 		httpSendDeniedResult(socket, request, validation);
 		close(socket)
@@ -19,7 +20,7 @@
 	if (request->type != MethodType.PUT && request->type != MethodType.POST && request->type != MethodType.DELETE && request->type != MethodType.PATCH) {
 		response = getResponseFromCache(request);
 	}
-	
+
 	if (response == NULL) {
 		response = httpSendRequest(request, socket);
 		storeInCache(response, request);
@@ -27,7 +28,7 @@
 		response = httpGetIfModified(request, response, socket);
 		storeInCache(response, request);
 	}
-	
+
 	if(!validation->isOnWhiteList) {
 		validation = validateResponse(response);
 		if (validation->isOnDeniedTerm){
@@ -36,7 +37,7 @@
 			return NULL;
 		}
 	}
-	
+
 	HttpSendResponse(socket, response)
 	close(socket)
 }
@@ -50,18 +51,20 @@ int main() {
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 
+	initializeLog();
+	initializeCache();
+
 	configureSockAddr(&local, 1050, INADDR_ANY);
 	srvSocket = socket(AF_INET, SOCK_STREAM, 0);
 	bind(srvSocket, (struct sockaddr*)&local, sizeof(struct sockaddr));
-	listen(srvSocket, MAX_N_OF_CONNECTIONS); 
-
+	listen(srvSocket, MAX_N_OF_CONNECTIONS);
 
 	while(TRUE) {
 		free(createdSockets[nextThread].sockAddr);
 
 		remote = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
 		rqstSocket = accept(srvSocket, (struct sockaddr*) remote, &sockAddrSize);
-		
+
 		createdSockets[nextThread].sockAddr = remote;
 		createdSockets[nextThread].socket = rqstSocket;
 
