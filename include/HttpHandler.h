@@ -54,7 +54,9 @@ void ResponsePrettyPrinter(HttpResponse *response);
 void RequestPrettyPrinter(HttpRequest *request);
 
 HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
+HeaderField *getLocalHeaders(char *resp, int *length, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
 char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size);
+char *getLocalBody(char *resp, int *length, char **raw, int *req_size, int body_size);
 
 HttpResponse *httpParseResponse(char *response);
 

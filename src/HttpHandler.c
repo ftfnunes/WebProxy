@@ -302,8 +302,177 @@ HttpResponse httpSendRequest(HttpRequest request, ThreadContext *context){
 
 
 
-HttpResponse *httpParseResponse(char *response) {
-	return NULL;
+HttpResponse *httpParseResponse(char *resp) {
+	int length = 0, size, body_size = 0, req_size, has_body = 0;
+
+	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
+	char buffer[3000], buff;
+	HttpResponse *response = (HttpResponse *)malloc(sizeof(HttpResponse));
+
+	response->version = NULL;
+	response->statusCode = -1;
+	response->reasonPhrase = NULL;
+	response->body = NULL;
+	response->raw = NULL;
+	response->headers = NULL;
+	response->headerCount = 0;
+
+	req_size = 0;
+	size = 0;
+	bzero(buffer, 3000);
+
+
+	while(1){
+
+		/* Leitura é feita da string recebida. */
+		buff = resp[length];
+		++length;
+
+		response->raw = (char *)realloc(response->raw, (req_size+1)*sizeof(char));
+		response->raw[req_size] = buff;
+		++req_size;
+
+		if(buff == '\n'){
+			bzero(buffer, 3000);
+			break;
+		}
+
+		if(buff == ' ' || buff == '\r'){
+			if(response->version == NULL){
+				response->version = (char *)malloc((size+1)*sizeof(char));
+				strcpy(response->version, buffer);
+				response->version[size] = '\0';
+				//printf("Version: %s\n", request->version);
+			} else if(response->statusCode == -1){
+				response->statusCode = (short)atoi(buffer);
+				//printf("Status Code: %d\n", request->statusCode);
+			} else if(buff == '\r'){
+				response->reasonPhrase = (char *)malloc((size+1)*sizeof(char));
+				strcpy(response->reasonPhrase, buffer);
+				response->reasonPhrase[size] = '\0';
+				//printf("Reason Phrase: %s\n", request->reasonPhrase);
+			}
+
+			bzero(buffer, 3000);
+			size = 0;
+		} else{
+			buffer[size] = buff;
+			++size;
+		}
+	}
+
+	response->headers = getLocalHeaders(resp, &length, &(response->raw), &(response->headerCount), &req_size, &has_body, &body_size, NULL);
+	
+
+	if( has_body == 1 ){
+		response->body = getLocalBody(resp, &length, &(response->raw), &req_size, body_size);
+	}
+
+	ResponsePrettyPrinter(response);
+
+	return response;
+}
+
+HeaderField *getLocalHeaders(char *resp, int *length, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
+	int found_linebreak = 0, size = 0, found_name;
+	char buff, buffer[3000], *value, *name;
+	HeaderField *headers;
+
+	printf("Entrou.\n");
+
+	while(1){
+		buff = resp[(*length)];
+		(*length) = (*length) + 1;
+
+		(*raw) = (char *)realloc((*raw), ((*req_size)+1)*sizeof(char));
+		(*raw)[(*req_size)] = buff;
+		(*req_size) = (*req_size) + 1;
+		printf("buff: '%c'\n", buff);	
+
+
+		if(found_linebreak == 1 && buff == '\r'){
+			++found_linebreak;
+			continue;
+		} else if(found_linebreak == 2 && buff == '\n'){
+			break;
+		} else {
+			found_linebreak = 0;
+		}
+
+
+		if(buff == '\n'){
+			headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
+			headers[*headerCount].name = name;
+			headers[*headerCount].value = value;
+			++(*headerCount);
+			
+			found_linebreak = 1;
+			size = 0;
+			bzero(buffer, 3000);
+			continue;
+		}
+
+		if(buff == ' ' && found_name == 0){
+			name = (char *)malloc(size*sizeof(char));
+			strcpy(name, buffer);
+			name[size-1] = '\0';
+			found_name = 1;
+
+			//printf("name: '%s'\n", name);
+			
+			bzero(buffer, 3000);
+			size = 0;
+		} else if(buff == '\r' && found_name == 1){
+			value = (char *)malloc((size+1)*sizeof(char));
+			strcpy(value, buffer);
+			value[size] = '\0';
+
+			//printf("value: '%s'\n", value);
+			if(strcmp(name, "Content-Length") == 0){
+				*body_size = atoi(value);
+				*has_body = 1;
+			}
+			if(strcmp(value, "Host") == 0 && hostname != NULL){
+				*hostname = value;
+			}
+			
+			found_name = 0;
+			bzero(buffer, 3000);
+			size = 0;
+		} else {
+			//printf("Char: '%c'\n", buff);
+			buffer[size] = buff;
+			++size;
+		}
+	}
+
+	return headers;
+}
+
+char *getLocalBody(char *resp, int *length, char **raw, int *req_size, int body_size){
+	int size, readings;
+	char *body;
+
+	body = (char *)malloc((body_size+1)*sizeof(char));
+
+	readings = strcpy(body, &(resp[*length]));
+	if(readings < 0){
+		printf("Error on receiving data from socket. Size < 0.\n");
+		exit(1);
+	}
+	
+	body[body_size] = '\0';
+	
+	(*raw) = (char *)realloc((*raw), ((*req_size)+body_size+1)*sizeof(char));
+	
+	for (size = 0; size < body_size; ++size){
+		(*raw)[(*req_size)] = body[size];
+		++(*req_size);
+	}
+	(*raw)[(*req_size)] = '\0';
+	++(*req_size);
+
+	return body;
 }
 
 void ResponsePrettyPrinter(HttpResponse *response){
