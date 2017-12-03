@@ -39,19 +39,15 @@ int isExpired(HttpResponse *response){
 
 	if (expiresDateStr != NULL) {
 		expiresDate = convertToTime(expiresDateStr, 0);
-		if (expiresDate > now) {
-			return TRUE;
-		}
 	} else {
 		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
-			printf("error\n");
 			return TRUE;;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
-		if (expiresDate > now) {
-			return TRUE;;
-		}
+	}
+	if (expiresDate < now) {
+		return TRUE;
 	}
 
 	return FALSE;
@@ -259,9 +255,7 @@ time_t convertToTime(char *dateStr, int minutesToAdd){
 
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
 	int i;
-	printf("%d\n", headerCount);
 	for (i = 0; i < headerCount; ++i) {
-		printf("%s\n", headers[i].name);
 		if (strcmp(headers[i].name, name) == 0) {
 			return headers[i].value;
 		}
