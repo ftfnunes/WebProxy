@@ -501,7 +501,7 @@ HttpResponse httpSendRequest(HttpRequest request, ThreadContext *context){
 
 */
 HttpResponse *httpParseResponse(char *resp) {
-	int length = 0, size, body_size = 0, req_size, has_body = 0;
+	int size, body_size = 0, req_size, has_body = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[3000], buff;
@@ -713,14 +713,13 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 	O corpo da requisição é lido do Raw da string. A posição inicial do corpo é dada por 'req_size'.
 */
 char *getLocalBody(char *resp, int *req_size, int body_size){
-	int size, readings;
-	char *body;
+	char *body, *readings;
 
 	body = (char *)malloc((body_size+1)*sizeof(char));
 
-	readings = strcpy(body, &(resp[*req_size]));
-	if(readings < 0){
-		printf("Error on receiving data from socket. Size < 0.\n");
+	readings = strcpy(body, &(resp[(*req_size)]));
+	if(readings != NULL){
+		printf("Leitura não para body não realizado.\n");
 		exit(1);
 	}
 	
