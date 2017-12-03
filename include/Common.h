@@ -6,9 +6,10 @@
 #ifndef COMMON_INC
 
 #define COMMON_INC
-#define MAX_N_OF_CONNECTIONS 10 
+#define MAX_N_OF_CONNECTIONS 10
 #define TRUE 1
 #define FALSE 0
+#define HASH_SIZE SHA256_DIGEST_LENGTH*2+1
 
 typedef struct socket_str{
 	struct sockaddr_in* sockAddr;

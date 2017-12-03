@@ -8,8 +8,8 @@ ODIR=obj
 
 BDIR=bin
 
-OBJS= RequestValidator.o WebCache.o HttpHandler.o Common.o Log.o
-OBJS_PATH= $(ODIR)/RequestValidator.o $(ODIR)/WebCache.o $(ODIR)/HttpHandler.o $(ODIR)/Common.o
+OBJS= RequestValidator.o WebCache.o HttpHandler.o Common.o Log.o CustomQueue.o
+OBJS_PATH= $(ODIR)/RequestValidator.o $(ODIR)/WebCache.o $(ODIR)/HttpHandler.o $(ODIR)/Common.o $(ODIR)/Log.o $(ODIR)/CustomQueue .o
 
 _make_obj := $(shell mkdir -p obj)
 _make_bin := $(shell mkdir -p bin)

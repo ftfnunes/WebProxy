@@ -25,6 +25,7 @@
 		response = httpSendRequest(request, socket);
 		storeInCache(response, request);
 	} else if(isExpired(response)) {
+		removeFromCache(request)
 		response = httpGetIfModified(request, response, socket);
 		storeInCache(response, request);
 	}

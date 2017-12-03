@@ -5,21 +5,43 @@
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "HttpHandler.h"
 #include "Common.h"
 #include "Log.h"
+#include "CustomQueue.h"
 
 #ifndef WEB_CACHE
 #define WEB_CACHE
 
-#define HASH_SIZE SHA256_DIGEST_LENGTH*2+1
-#define CACHE_FILENAME_SIZE HASH_SIZE+6
+#define CACHE_FILENAME_SIZE HASH_SIZE+7
 #define EXPIRES_HEADER "Expires"
 #define DATE_HEADER "Date"
 #define CACHED_RESPONSE_LIFETIME 5 //In minutes
-#define SIZE_OF_MESSAGE 40
+#define SIZE_OF_MESSAGE 500
+#define CACHE_PATH "./cache" //Nao deve terminar com /
+#define MAX_CACHE_SIZE 1000000
 
 pthread_mutex_t cacheMutex;
+pthread_mutex_t queueMutex;
+
+Queue *fileQueue;
+
+off_t cacheSize;
+
+struct fileListNode {
+    char *key;
+    time_t lastAccess;
+    struct fileListNode *next;
+};
+
+typedef struct fileListNode FileListNode;
+
+typedef struct fileList {
+    FileListNode *start;
+} FileList;
 
 HttpResponse *getResponseFromCache(HttpRequest* request);
 
@@ -38,5 +60,25 @@ time_t convertToTime(char *dateStr, int minutesToAdd);
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount);
 
 void initializeCache();
+
+char *getRequestFilename(HttpRequest *request);
+
+FileListNode *createFileListNode(char *key, time_t lastAccess);
+
+FileList *createFileList();
+
+void freeList(FileList *list);
+
+void fileListToQueue(FileList *list, Queue *queue);
+
+void insertInOrder(FileList *list, char *key, time_t lastAccess);
+
+void getKeyFromFilename(char *key, char *filename);
+
+int removeLRAResponse();
+
+off_t getCacheStatus(Queue *queue);
+
+char *getFilenameFromKey(char *key);
 
 #endif
