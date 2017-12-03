@@ -11,6 +11,12 @@
 #include <netdb.h>
 #include "Log.h"
 
+int HttpSendResponse(ThreadContext *context, HttpResponse *response){
+
+	send(context->socket, response->raw, response->respSize*sizeof(char), 0);
+
+}
+
 HttpResponse *httpSendRequest(HttpRequest *request){
 	HttpResponse *response = NULL;
 	ThreadContext context;
@@ -60,7 +66,7 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 		bzero(buffer, 4000);
 	}
 
-	if(send(sockfd, request->raw, strlen(request->raw)*sizeof(char), 0) < 0){
+	if(send(sockfd, request->raw, request->reqSize*sizeof(char), 0) < 0){
 		sprintf(buffer,"Erro ao enviar requisição para o host: %s", request->hostname);
 		logError(buffer);
 		bzero(buffer, 4000);
@@ -175,7 +181,7 @@ int FreeHttpResponse(HttpResponse *response){
 
 */
 HttpResponse *httpReceiveResponse(ThreadContext *context){
-	int length, size, body_size = 0, req_size, has_body = 0;
+	int length, size, req_size, has_body = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[3000], buff;
@@ -189,6 +195,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 	response->raw = NULL;
 	response->headers = NULL;
 	response->headerCount = 0;
+	response->bodySize = 0;
 
 	req_size = 0;
 	size = 0;
@@ -272,11 +279,11 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 
 
 	/* Após a primeira linha da resposta ser adquirida, os headers são pegos. Na resposta o último parâmetro é NULL pelo fato de não ser armazenado na struct o Hostname. */
-	response->headers = getHeaders(context, &(response->raw), &(response->headerCount), &req_size, &has_body, &body_size, NULL);
+	response->headers = getHeaders(context, &(response->raw), &(response->headerCount), &req_size, &has_body, &response->bodySize, NULL);
 	
 	/* Caso a resposta tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
-		response->body = getBody(context, &(response->raw), &req_size, body_size);
+		response->body = getBody(context, &(response->raw), &req_size, response->bodySize);
 	}
 
 	response->raw = (char *)realloc(response->raw, (req_size+1)*sizeof(char));
@@ -285,6 +292,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 
 	//ResponsePrettyPrinter(response);
 
+	response->respSize = req_size;
 	return response;
 }
 
@@ -296,7 +304,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 */
 
 HttpRequest *httpReceiveRequest(ThreadContext *context){
-	int length, size, body_size = 0, req_size, has_body = 0;
+	int length, size, req_size, has_body = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[3000], buff;
@@ -315,6 +323,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 	request->raw = NULL;
 	request->headerCount = 0;
 	request->headers = NULL;
+	request->bodySize = 0;
 
 	req_size = 0;
 	size = 0;
@@ -417,11 +426,11 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 
 	/* Após a primeira linha da requisição ser adquirida, os headers são pegos. */
-	request->headers = getHeaders(context, &(request->raw), &(request->headerCount), &req_size, &has_body, &body_size, &request->hostname);
+	request->headers = getHeaders(context, &(request->raw), &(request->headerCount), &req_size, &has_body, &request->bodySize, &request->hostname);
 	
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
-		request->body = getBody(context, &(request->raw), &req_size, body_size);
+		request->body = getBody(context, &(request->raw), &req_size, request->bodySize);
 	}
 
 	request->raw = (char *)realloc(request->raw, (req_size+1)*sizeof(char));
@@ -429,6 +438,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 	++req_size;
 	//RequestPrettyPrinter(request);
 
+	request->reqSize = req_size;
 	return request;
 }
 
@@ -579,12 +589,12 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size){
 	
 	for (size = 0; size < body_size; ++size){
 		(*raw)[(*req_size)] = body[size];
+		printf("Char: %c\n", (*raw)[(*req_size)]);
 		++(*req_size);
 	}
 	(*raw)[(*req_size)] = '\0';
 	++(*req_size);
 
-	printf("Body Size: %d\nLength: %d\nReq body: %s\n\n", body_size, length, body);
 
 	/* O ponteiro é retornado com os dados do corpo. */
 	return body;
@@ -699,6 +709,7 @@ HttpResponse *httpParseResponse(char *resp) {
 
 	//ResponsePrettyPrinter(response);
 
+	response->respSize = req_size;
 	return response;
 }
 

@@ -7,3 +7,13 @@ void configureSockAddr(struct sockaddr_in* sockAddr, int port, unsigned long add
 	sockAddr->sin_addr.s_addr = addr;
 	bzero(&(sockAddr->sin_zero), 8);
 }
+
+int stringCopy(char *dest, char *src, int srcSize){
+	int i;
+
+	for (i = 0; i < srcSize; ++i){
+		dest[i] = src[i];
+	}
+
+	return i;
+}

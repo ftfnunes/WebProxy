@@ -21,5 +21,6 @@ struct socket_str {
 typedef struct socket_str ThreadContext;
 
 void configureSockAddr(struct sockaddr_in* sockAddr, int port, unsigned long addr);
+int stringCopy(char *dest, char *src, int srcSize);
 
 #endif

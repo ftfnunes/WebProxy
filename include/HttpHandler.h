@@ -46,6 +46,8 @@ typedef struct httpRequest{
 	char *raw;  /* String da requisição completa, com todos os headers e corpo. */
 	HeaderField *headers; /* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	int headerCount;  /* Número de Headers. */
+	int reqSize;
+	int bodySize;
 } HttpRequest;
 
 /*
@@ -59,6 +61,8 @@ typedef struct httpResponse{
 	char *raw; /* String da resposta completa, com todos os headers e corpo. */
 	HeaderField *headers; /* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	int headerCount; /* Número de Headers. */
+	int respSize;
+	int bodySize;
 } HttpResponse;
 
 
