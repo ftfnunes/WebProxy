@@ -19,8 +19,9 @@
 #define CACHE_FILENAME_SIZE HASH_SIZE+7
 #define EXPIRES_HEADER "Expires"
 #define DATE_HEADER "Date"
-#define CACHED_RESPONSE_LIFETIME 5 //In minutes
+#define CACHED_RESPONSE_LIFETIME 40 //In minutes
 #define SIZE_OF_MESSAGE 500
+// TODO: COLOCAR PASTA NO MAKEFILE
 #define CACHE_PATH "./cache" //Nao deve terminar com /
 #define MAX_CACHE_SIZE 1000000
 

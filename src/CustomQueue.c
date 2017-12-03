@@ -26,15 +26,15 @@ int push(Queue *queue, char *key) {
     QueueNode *last = queue->last;
 
     if (node != NULL) {
-        if (node->qPrev != NULL) {
-            node->qPrev->qNext = node->qNext;
-        } else {
-            queue->first = node->qNext;
-        }
         if (node->qNext != NULL) {
             node->qNext->qPrev = node->qPrev;
         } else {
             return TRUE;
+        }
+        if (node->qPrev != NULL) {
+            node->qPrev->qNext = node->qNext;
+        } else {
+            queue->first = node->qNext;
         }
     } else {
         node = createNode(key);

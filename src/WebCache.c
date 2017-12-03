@@ -138,6 +138,7 @@ void initializeCache() {
 	fileQueue = initializeQueue();
 	cacheSize = getCacheStatus(fileQueue);
 	pthread_mutex_init(&cacheMutex, NULL);
+	pthread_mutex_init(&queueMutex, NULL);
 }
 
 //funções utilitárias
@@ -257,7 +258,7 @@ char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
 }
 
 char *getFilenameFromKey(char *key) {
-	char *filename = (char *)malloc(CACHE_FILENAME_SIZE*sizeof(char));
+	char *filename = (char *)malloc((CACHE_FILENAME_SIZE+strlen(CACHE_PATH))*sizeof(char));
 	sprintf(filename, "%s/%s.cache",CACHE_PATH, key);
 	return filename;
 }
