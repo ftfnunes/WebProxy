@@ -48,7 +48,7 @@ int main() {
 	struct sockaddr_in* remote;
 	struct sockaddr_in local;
 	pthread_t threads[MAX_N_OF_CONNECTIONS];
-	Socket createdSockets[MAX_N_OF_CONNECTIONS];
+	ThreadContext createdSockets[MAX_N_OF_CONNECTIONS];
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 

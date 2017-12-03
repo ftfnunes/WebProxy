@@ -7,6 +7,7 @@
 
 #define COMMON_INC
 #define MAX_N_OF_CONNECTIONS 10
+#define MAX_URL_SIZE 2048 /*baseado no tamanho maximo de url do IE*/
 #define TRUE 1
 #define FALSE 0
 #define HASH_SIZE SHA256_DIGEST_LENGTH*2+1
