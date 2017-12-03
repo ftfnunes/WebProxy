@@ -1,7 +1,7 @@
 #include "HttpHandler.h"
 #include "RequestValidator.h"
 #include "WebCache.h"
-#include "Log.c"
+#include "Log.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

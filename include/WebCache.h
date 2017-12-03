@@ -63,16 +63,6 @@ void initializeCache();
 
 char *getRequestFilename(HttpRequest *request);
 
-FileListNode *createFileListNode(char *key, time_t lastAccess);
-
-FileList *createFileList();
-
-void freeList(FileList *list);
-
-void fileListToQueue(FileList *list, Queue *queue);
-
-void insertInOrder(FileList *list, char *key, time_t lastAccess);
-
 void getKeyFromFilename(char *key, char *filename);
 
 int removeLRAResponse();
@@ -80,5 +70,15 @@ int removeLRAResponse();
 off_t getCacheStatus(Queue *queue);
 
 char *getFilenameFromKey(char *key);
+
+FileListNode *createFileListNode(char *key, time_t lastAccess);
+
+FileList *createFileList();
+
+void freeFilesList(FileList *list);
+
+void fileListToQueue(FileList *list, Queue *queue);
+
+void insertInOrder(FileList *list, char *key, time_t lastAccess);
 
 #endif

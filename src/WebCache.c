@@ -173,7 +173,7 @@ off_t getCacheStatus(Queue *queue) {
     }
     closedir(dirp);
 	fileListToQueue(list, queue);
-	freeList(list);
+	freeFilesList(list);
     return size;
 }
 
@@ -295,7 +295,7 @@ void fileListToQueue(FileList *list, Queue *queue) {
 	}
 }
 
-void freeList(FileList *list) {
+void freeFilesList(FileList *list) {
 	FileListNode *cur;
 	for ( cur = list->start; cur != NULL; cur = cur->next) {
 		free(cur->key);

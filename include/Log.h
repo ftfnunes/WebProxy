@@ -4,8 +4,9 @@
 #include <time.h>
 #include <pthread.h>
 
-#ifndef LOG_HEADER
-#define LOG_HEADER
+#ifndef LOG_INC
+
+#define LOG_INC
 
 #define LOG_FILE "WebProxy.log"
 #define LOG_HEADER_LENGTH 50
@@ -28,6 +29,5 @@ void writeLog(char *logMessage);
 void getDateString(char date[]);
 
 void initializeLog();
-
 
 #endif

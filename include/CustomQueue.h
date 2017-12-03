@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "Common.h"
 
-#ifndef HASHTABLE
-#define HASHTABLE
+#ifndef QUEUE_INC
+#define QUEUE_INC
 
 #define HASHTABLE_SIZE 1000000
 
@@ -19,21 +19,23 @@ typedef struct qnode QueueNode;
 
 typedef QueueNode** Hashtable;
 
-typedef struct queue {
+struct queue {
     QueueNode *first;
     QueueNode *last;
-    Hashtable *hashtable;
-} Queue;
+    Hashtable hashtable;
+};
+
+typedef struct queue Queue;
 
 char *pop(Queue *queue);
 
 int push(Queue *queue, char *key);
 
-void removeFromHashtable(Hashtable *hashtable, QueueNode* node);
+void removeFromHashtable(Hashtable hashtable, QueueNode* node);
 
-QueueNode *getFromHashtable(Hashtable *hashtable, char *key);
+QueueNode *getFromHashtable(Hashtable hashtable, char *key);
 
-void insertInHashtable(Hashtable *hashtable, QueueNode *node);
+void insertInHashtable(Hashtable hashtable, QueueNode *node);
 
 QueueNode *createNode(char *key);
 

@@ -1,11 +1,11 @@
-#include "CustomQueue.c"
+#include "CustomQueue.h"
 
 char *pop(Queue *queue) {
     QueueNode *first = queue->first;
     char *key = NULL;
 
     if (first != NULL) {
-        key = first->key
+        key = first->key;
         queue->first = first->qNext;
         if (first->qNext != NULL) {
             first->qNext->qPrev = NULL;
@@ -15,7 +15,7 @@ char *pop(Queue *queue) {
 
         removeFromHashtable(queue->hashtable, first);
 
-        free(last);
+        free(first);
     }
 
     return key;
@@ -41,7 +41,7 @@ int push(Queue *queue, char *key) {
         if (node == NULL) {
             return FALSE;
         }
-        insertInHashtable(node);
+        insertInHashtable(queue->hashtable, node);
     }
 
     if (last != NULL) {
@@ -57,7 +57,7 @@ int push(Queue *queue, char *key) {
     return TRUE;
 }
 
-void removeFromHashtable(Hashtable *hashtable, QueueNode* node) {
+void removeFromHashtable(Hashtable hashtable, QueueNode* node) {
     if (node->tbPrev != NULL) {
         node->tbPrev->tbNext = node->tbNext;
     } else {
@@ -68,7 +68,7 @@ void removeFromHashtable(Hashtable *hashtable, QueueNode* node) {
     }
 }
 
-QueueNode *getFromHashtable(Hashtable *hashtable, char *key) {
+QueueNode *getFromHashtable(Hashtable hashtable, char *key) {
     QueueNode* bucket = hashtable[getHashFromKey(key)];
     QueueNode* cur = NULL;
 
@@ -81,8 +81,8 @@ QueueNode *getFromHashtable(Hashtable *hashtable, char *key) {
     return NULL;
 }
 
-void insertInHashtable(Hashtable *hashtable, QueueNode *node) {
-    long int index = getHashFromKey(key);
+void insertInHashtable(Hashtable hashtable, QueueNode *node) {
+    long int index = getHashFromKey(node->key);
     QueueNode* bucket = hashtable[index];
 
     if (bucket != NULL) {
@@ -113,13 +113,13 @@ QueueNode *createNode(char *key) {
 
 long int getHashFromKey(char *key) {
     int stringIndex = strlen(key)-2*sizeof(long int);
-    return strtol(key+stringIndex, NULL, 16) % HASHTABLE_SIZE;
+    return (strtol(key+stringIndex, NULL, 16) % HASHTABLE_SIZE);
 }
 
 Queue *initializeQueue() {
     Queue *queue = (Queue *)malloc(sizeof(Queue));
 
-    queue->hashtable = (Hashtable *)calloc(HASHTABLE_SIZE, sizeof(QueueNode *));
+    queue->hashtable = (Hashtable)calloc(HASHTABLE_SIZE, sizeof(QueueNode *));
     if (queue->hashtable == NULL) {
         exit(1);
     }
