@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "Common.h"
+#include "Log.h"
 
 #ifndef HTTP_HANDLER
 
@@ -58,6 +62,7 @@ typedef struct httpResponse{
 } HttpResponse;
 
 
+HttpResponse *httpSendRequest(HttpRequest *request);
 HttpResponse *httpReceiveResponse(ThreadContext *context);
 HttpRequest *httpReceiveRequest(ThreadContext *context);
 

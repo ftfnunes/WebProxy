@@ -6,6 +6,92 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include "Log.h"
+
+HttpResponse *httpSendRequest(HttpRequest *request){
+	HttpResponse *response = NULL;
+	ThreadContext context;
+	int sockfd;  
+	struct addrinfo hints, *servinfo = NULL, *p = NULL;
+	int rv;
+	char buffer[4000];
+
+	bzero(buffer, 4000);
+
+	logSuccess("Request recebida em 'httpSendRequest'.");
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((rv = getaddrinfo(request->hostname, "http", &hints, &servinfo)) != 0) {
+		logError("Erro ao obter informacoes de DNS.");
+	    exit(1);
+	}
+
+	/* O loop passa pelos endereços recebidos e busca um que não seja nulo e que seja possível conectar. */
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+    	if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+			logError("Erro ao criar o socket.");
+    	    continue;
+    	}
+	
+	    if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+	        printf(buffer,"Erro ao tentar conectar com o servidor: %s", request->hostname);
+			logError(buffer);
+			bzero(buffer, 4000);
+	        close(sockfd);
+	        continue;
+	    }
+	
+    	break; 
+	}
+
+	if( p == NULL){
+		sprintf(buffer,"Nao foi possivel conectar ao servidor: %s", request->hostname);
+		logError(buffer);
+		bzero(buffer, 4000);
+		exit(1);
+	} else{
+		sprintf(buffer,"Conexao estabelecida com o host: %s", request->hostname);
+		logSuccess(buffer);
+		bzero(buffer, 4000);
+	}
+
+	if(send(sockfd, request->raw, strlen(request->raw)*sizeof(char), 0) < 0){
+		sprintf(buffer,"Erro ao enviar requisição para o host: %s", request->hostname);
+		logError(buffer);
+		bzero(buffer, 4000);
+		freeaddrinfo(servinfo);
+		close(sockfd);
+		exit(1);
+	} else {
+		sprintf(buffer,"Requisição enviada com sucesso para o host: %s", request->hostname);
+		logSuccess(buffer);
+		bzero(buffer, 4000);
+	}
+
+	context.socket = sockfd;
+	context.sockAddr = NULL;
+
+	response = httpReceiveResponse(&context);
+
+	if(response == NULL){
+		sprintf(buffer,"Erro ao realizar o parse da response do host: %s", request->hostname);
+		logError(buffer);
+		bzero(buffer, 4000);
+	} else{
+		sprintf(buffer,"Response recebida e parse realizado do host: %s", request->hostname);
+		logSuccess(buffer);
+		bzero(buffer, 4000);
+	}
+
+	freeaddrinfo(servinfo);
+	close(sockfd);
+	return response;
+}
 
 
 /*
@@ -161,16 +247,23 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 				response->version = (char *)malloc((size+1)*sizeof(char));
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
+				//printf("RESPONSE - Version %s\n", response->version);
+				bzero(buffer, 3000);
+				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
+				//printf("RESPONSE - Code: %d\n", response->statusCode);
+				bzero(buffer, 3000);
+				size = 0;
 			} else if(buff == '\r'){
 				response->reasonPhrase = (char *)malloc((size+1)*sizeof(char));
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
+				//printf("RESPONSE - Phrase: %s\n", response->reasonPhrase);
+				bzero(buffer, 3000);
+				size = 0;
 			}
 
-			bzero(buffer, 3000);
-			size = 0;
 		} else{
 			buffer[size] = buff;
 			++size;
@@ -185,6 +278,10 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 	if( has_body == 1 ){
 		response->body = getBody(context, &(response->raw), &req_size, body_size);
 	}
+
+	response->raw = (char *)realloc(response->raw, (req_size+1)*sizeof(char));
+	response->raw[req_size] = '\0';
+	++req_size;
 
 	//ResponsePrettyPrinter(response);
 
@@ -327,6 +424,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 		request->body = getBody(context, &(request->raw), &req_size, body_size);
 	}
 
+	request->raw = (char *)realloc(request->raw, (req_size+1)*sizeof(char));
+	request->raw[req_size] = '\0';
+	++req_size;
 	//RequestPrettyPrinter(request);
 
 	return request;
@@ -344,9 +444,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 */
 HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
-	int length, found_linebreak = 0, size = 0, found_name;
-	char buff, buffer[3000], *value, *name;
-	HeaderField *headers;
+	int length = 0, found_linebreak = 0, size = 0, found_name = 0;
+	char buff, buffer[3000], *value = NULL, *name = NULL;
+	HeaderField *headers = NULL;
 
 	while(1){
 		length = recv(context->socket, &buff, 1, 0);
@@ -358,8 +458,6 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 		(*raw) = (char *)realloc((*raw), ((*req_size)+1)*sizeof(char));
 		(*raw)[(*req_size)] = buff;
 		(*req_size) = (*req_size) + 1;
-		printf("buff: '%c'\n", buff);	
-
 
 		/* 
 			Verificações que detectam a sequência de saída do loop. Só há a saída quando a sequência lida é "\r\n\r\n". 
@@ -377,9 +475,13 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 			Quando um '\n' é encontrado significa que o "name" e "value" encontrados devem ser aramazenados na lista de headers.
 		*/
 		if(buff == '\n'){
+			//printf("Push headers.\n");
 			headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
+			//printf("Deu push.\n");
+			//printf("Antes - Name: %s\nValue:%s\n\n", name, value);
 			headers[*headerCount].name = name;
 			headers[*headerCount].value = value;
+			//printf("Depois - Name: %s\nValue:%s\n\n", headers[*headerCount].name, headers[*headerCount].value);
 			++(*headerCount);
 			
 			found_linebreak = 1;
@@ -417,7 +519,9 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 			*/
 			if(strcmp(name, "Content-Length") == 0){
 				*body_size = atoi(value);
-				*has_body = 1;
+				if((*body_size) > 0){
+					*has_body = 1;
+				}				
 			}
 
 			/*
@@ -482,16 +586,6 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size){
 
 	/* O ponteiro é retornado com os dados do corpo. */
 	return body;
-}
-
-
-
-
-
-HttpResponse httpSendRequest(HttpRequest request, ThreadContext *context){
-	HttpResponse response;
-
-	return response;
 }
 
 
@@ -569,16 +663,18 @@ HttpResponse *httpParseResponse(char *resp) {
 				response->version = (char *)malloc((size+1)*sizeof(char));
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
+				bzero(buffer, 3000);
+				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
+				bzero(buffer, 3000);
+				size = 0;
 			} else if(buff == '\r'){
 				response->reasonPhrase = (char *)malloc((size+1)*sizeof(char));
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
 			}
 
-			bzero(buffer, 3000);
-			size = 0;
 		} else{
 			buffer[size] = buff;
 			++size;
@@ -598,6 +694,7 @@ HttpResponse *httpParseResponse(char *resp) {
 		response->body = getLocalBody(resp, &req_size, body_size);
 	}
 
+
 	//ResponsePrettyPrinter(response);
 
 	return response;
@@ -616,9 +713,9 @@ HttpResponse *httpParseResponse(char *resp) {
 
 */
 HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
-	int found_linebreak = 0, size = 0, found_name;
-	char buff, buffer[3000], *value, *name;
-	HeaderField *headers;
+	int found_linebreak = 0, size = 0, found_name = 0;
+	char buff = NULL, buffer[3000], *value = NULL, *name = NULL;
+	HeaderField *headers = NULL;
 
 
 	while(1){
@@ -683,7 +780,9 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 			*/
 			if(strcmp(name, "Content-Length") == 0){
 				*body_size = atoi(value);
-				*has_body = 1;
+				if((*body_size) > 0){
+					*has_body = 1;
+				}				
 			}
 
 			/*
