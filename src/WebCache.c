@@ -42,7 +42,7 @@ int isExpired(HttpResponse *response){
 	} else {
 		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
-			return TRUE;;
+			return TRUE;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
 	}
@@ -51,6 +51,12 @@ int isExpired(HttpResponse *response){
 	}
 
 	return FALSE;
+}
+
+int shouldBeCached(HttpResponse *response) {
+	char *cacheControl = findHeaderByName(CACHE_CONTROL_HEADER, response->headers, response->headerCount);
+
+
 }
 
 void storeInCache(HttpResponse *response, HttpRequest* request) {
