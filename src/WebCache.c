@@ -45,6 +45,7 @@ int isExpired(HttpResponse *response){
 	} else {
 		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
+			printf("error\n");
 			return TRUE;;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
@@ -62,10 +63,19 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	char key[HASH_SIZE];
 	FILE *fp;
 	int responseLength = strlen(response->raw);
+	struct stat fileStat;
 
 	getKeyFromFilename(key, filename);
 
 	pthread_mutex_lock(&cacheMutex);
+
+	if (access(filename, F_OK) == 0) {
+		if (stat(filename, &fileStat) != 0) {
+			sprintf(logStr, "Could not get stats for file %s.", filename);
+			logError(logStr);
+		}
+		cacheSize -= fileStat.st_size;
+	}
 
 	while (cacheSize + responseLength > MAX_CACHE_SIZE) {
 		if (!removeLRAResponse()) {
@@ -249,7 +259,9 @@ time_t convertToTime(char *dateStr, int minutesToAdd){
 
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
 	int i;
+	printf("%d\n", headerCount);
 	for (i = 0; i < headerCount; ++i) {
+		printf("%s\n", headers[i].name);
 		if (strcmp(headers[i].name, name) == 0) {
 			return headers[i].value;
 		}
