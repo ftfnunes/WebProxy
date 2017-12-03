@@ -116,7 +116,7 @@ int FreeHttpRequest(HttpRequest *request){
 			free(request->body);
 		}
 		if(request->raw != NULL){
-			free(request->body);
+			free(request->raw);
 		}
 
 		for(i = 0; i < request->headerCount; ++i){
@@ -152,7 +152,7 @@ int FreeHttpResponse(HttpResponse *response){
 			free(response->body);
 		}
 		if(response->raw != NULL){
-			free(response->body);
+			free(response->raw);
 		}
 
 		for(i = 0; i < response->headerCount; ++i){
@@ -561,7 +561,7 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size){
 	body = (char *)malloc((body_size+1)*sizeof(char));
 
 	/* A leitura é feita para o espaço criado para o corpo. */
-	length = recv(context->socket, body, body_size, 0);
+	length = recv(context->socket, body, body_size, MSG_WAITALL);
 	if(length < 0){
 		printf("Error on receiving data from socket. Size < 0.\n");
 		exit(1);
@@ -583,6 +583,8 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size){
 	}
 	(*raw)[(*req_size)] = '\0';
 	++(*req_size);
+
+	printf("Body Size: %d\nLength: %d\nReq body: %s\n\n", body_size, length, body);
 
 	/* O ponteiro é retornado com os dados do corpo. */
 	return body;
@@ -714,7 +716,7 @@ HttpResponse *httpParseResponse(char *resp) {
 */
 HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
 	int found_linebreak = 0, size = 0, found_name = 0;
-	char buff = NULL, buffer[3000], *value = NULL, *name = NULL;
+	char buff = '\0', buffer[3000], *value = NULL, *name = NULL;
 	HeaderField *headers = NULL;
 
 
@@ -737,7 +739,7 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 
 
 		/*
-			Quando um '\n' é encontrado significa que o "name" e "value" encontrados devem ser aramazenados na lista de headers.
+			Quando um '\n' é encontrado significa que o "name" e "value" encontrados devem ser armazenados na lista de headers.
 		*/
 		if(buff == '\n'){
 			headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
@@ -817,7 +819,7 @@ char *getLocalBody(char *resp, int *req_size, int body_size){
 	body = (char *)malloc((body_size+1)*sizeof(char));
 
 	readings = strcpy(body, &(resp[(*req_size)]));
-	if(readings != NULL){
+	if(readings == NULL){
 		printf("Leitura não para body não realizado.\n");
 		exit(1);
 	}
@@ -825,6 +827,8 @@ char *getLocalBody(char *resp, int *req_size, int body_size){
 	body[body_size] = '\0';
 
 	(*req_size) += body_size + 1; 
+
+	printf("Local body: %s\n\n", body);
 	
 
 	return body;
