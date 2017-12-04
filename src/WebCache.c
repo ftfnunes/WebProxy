@@ -5,7 +5,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *filename = getRequestFilename(request);
 	char key[HASH_SIZE];
 	char *file = NULL;
-	char *logStr = (char *)malloc((strlen(request->raw)+SIZE_OF_MESSAGE)*sizeof(char));
+	char *logStr = (char *)malloc((request->reqSize+SIZE_OF_MESSAGE)*sizeof(char));
 	HttpResponse *httpResponse = NULL;
 
 	getKeyFromFilename(key, filename);
@@ -20,7 +20,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 
 		httpResponse = httpParseResponse(file);
 
-		sprintf(logStr, "Successfully obtained response to request:\n %s", request->raw);
+		sprintf(logStr, "Successfully obtained response to request:\n %.200s", request->raw);
 		logSuccess(logStr);
 	}
 
@@ -42,7 +42,7 @@ int isExpired(HttpResponse *response){
 	} else {
 		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
-			return TRUE;;
+			return TRUE;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
 	}
@@ -53,12 +53,33 @@ int isExpired(HttpResponse *response){
 	return FALSE;
 }
 
+int shouldBeCached(HttpResponse *response) {
+	char *cacheControl = findHeaderByName(CACHE_CONTROL_HEADER, response->headers, response->headerCount);
+	char *buffer;
+	char *token;
+	char *saveptr;
+
+	if (cacheControl != NULL) {
+		buffer = (char *)malloc((strlen(cacheControl)+1)*sizeof(char));
+		strcpy(buffer, cacheControl);
+
+		for (token = strtok_r(buffer, " ,", &saveptr); token != NULL; token = strtok_r(NULL, " ", &saveptr)) {
+			if (strcmp(token, NO_CACHE_DIRECTIVE) == 0 || strcmp(token, PRIVATE_DIRECTIVE) == 0) {
+				free(buffer);
+				return FALSE;
+			}
+		}
+	}
+	free(buffer);
+	return TRUE;
+}
+
 void storeInCache(HttpResponse *response, HttpRequest* request) {
 	char *filename = getRequestFilename(request);
 	char logStr[200];
 	char key[HASH_SIZE];
 	FILE *fp;
-	int responseLength = strlen(response->raw);
+	int responseLength = response->respSize;
 	struct stat fileStat;
 
 	getKeyFromFilename(key, filename);
@@ -201,13 +222,13 @@ char convertToHexa(unsigned char c) {
 }
 
 // Retorna a string do hash em base 16, alocada dinamicamente.
-char *calculateHash(char *request) {
+char *calculateHash(char *requestUrl) {
 	char *result = malloc(HASH_SIZE);
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	char buffer[2];
 	int i;
 
-	SHA256((unsigned char *)request, strlen(request), hash);
+	SHA256((unsigned char *)requestUrl, strlen(requestUrl), hash);
 
 	for (i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
 		buffer[0] = convertToHexa(hash[i] >> 4);
@@ -269,11 +290,27 @@ char *getFilenameFromKey(char *key) {
 	return filename;
 }
 
+char *getUrl(HttpRequest *request) {
+	char *url;
+	if (strncmp(request->uri, "/", 1) == 0) {
+		url = malloc((strlen(request->uri) + strlen(request->hostname) + 1)*sizeof(char));
+		strcpy(url, request->hostname);
+		strcat(url, request->uri);
+	} else {
+		url = malloc((strlen(request->uri)+ 1)*sizeof(char));
+		strcpy(url, request->uri);
+	}
+
+	return url;
+}
+
 // Funções de manipulação de listas de arquivos
 char *getRequestFilename(HttpRequest *request) {
-	char *hash = calculateHash(request->raw);
+	char *url = getUrl(request);
+	char *hash = calculateHash(url);
 	char *filename = getFilenameFromKey(hash);
 	free(hash);
+	free(url);
 	return filename;
 }
 
