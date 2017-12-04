@@ -23,25 +23,19 @@ void freeResources(ThreadContext *context) {
 }
 
 int HttpSendResponse(ThreadContext *context, HttpResponse *response){
-	char *buffer, buff[500];
+	char buffer[BUFFER_SIZE], buff[500];
 	int i, length, foundConnection = FALSE;
 
 	logSuccess("Entrou no HttpSendResponse.");
-	buffer = (char *)malloc((response->respSize)*sizeof(char));
-	if(buffer == NULL){
-		logError("Malloc deu erro. Linha 22");
-		freeResources(context);
-		pthread_exit(NULL);
-	}
 	//logSuccess("Alocou memoria para o buffer.");
 
-	bzero(buffer, response->respSize);
+	bzero(buffer, BUFFER_SIZE);
 
 	sprintf(buffer, "%s %d %s\r\n", response->version, response->statusCode, response->reasonPhrase);
 	//logSuccess("Escreveu no buffer.");
 	length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
-	bzero(buff, 500);
-	//printf("Envou dados. - Length: %d - Strlen: %ld.", length, strlen(buffer));
+	//bzero(buff, 500);
+	//sprintf(buff, "Envou dados. - Length: %d - Strlen: %ld.", length, strlen(buffer));
 	//logSuccess(buff);
 
 	if(length != (strlen(buffer))){
@@ -54,7 +48,7 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 
 
 	for (i = 0; i < response->headerCount; ++i){
-		bzero(buffer, response->respSize);
+		bzero(buffer, BUFFER_SIZE);
 		if(strcmp(response->headers[i].name, "Keep-Alive") == 0){
 			continue;
 		}
@@ -78,7 +72,7 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 	}
 
 	if (!foundConnection) {
-		bzero(buffer, response->respSize);
+		bzero(buffer, BUFFER_SIZE);
 		sprintf(buffer, "Connection: close\r\n");
 		length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
 		if(length != (strlen(buffer))){
@@ -109,7 +103,91 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 		}
 	}
 
-	free(buffer);
+	return 0;
+}
+
+
+int sendRequest(ThreadContext *context, HttpRequest *request){
+	char buffer[BUFFER_SIZE], buff[500];
+	int i, length, foundConnection = FALSE;
+
+	logSuccess("Entrou no sendRequest.");
+	//logSuccess("Alocou memoria para o buffer.");
+
+	bzero(buffer, BUFFER_SIZE);
+
+	sprintf(buffer, "%s %s %s\r\n", request->method, request->uri, request->version);
+	//logSuccess("Escreveu no buffer.");
+	length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
+	bzero(buff, 500);
+	//printf("Envou dados. - Length: %d - Strlen: %ld.", length, strlen(buffer));
+	//logSuccess(buff);
+
+	if(length != (strlen(buffer))){
+		bzero(buff, 500);
+		sprintf(buff, "Erro ao enviar primeira linha da request. Enviados: %d - Length: %ld.", length, strlen(buffer));
+		logError(buff);
+		freeResources(context);
+		pthread_exit(NULL);
+	}
+
+
+	for (i = 0; i < request->headerCount; ++i){
+		bzero(buffer, BUFFER_SIZE);
+		if(strcmp(request->headers[i].name, "Keep-Alive") == 0){
+			continue;
+		}
+
+		if(strcmp(request->headers[i].name, "Connection") == 0) {
+			sprintf(buffer, "%s: close\r\n", request->headers[i].name);
+			length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
+			foundConnection = TRUE;
+		} else{
+			sprintf(buffer, "%s: %s\r\n", request->headers[i].name, request->headers[i].value);
+			length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
+		}
+
+		if(length != (strlen(buffer))){
+			bzero(buff, 500);
+			sprintf(buff, "Erro ao enviar header da response. Enviados: %d - Length: %ld. Name: %s - Value:%s", length, strlen(buffer), request->headers[i].name, request->headers[i].value);
+			logError(buff);
+			freeResources(context);
+			pthread_exit(NULL);
+		}
+	}
+
+	if (!foundConnection) {
+		bzero(buffer, BUFFER_SIZE);
+		sprintf(buffer, "Connection: close\r\n");
+		length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
+		if(length != (strlen(buffer))){
+			bzero(buff, 500);
+			sprintf(buff, "Erro ao enviar header da response. Enviados: %d - Length: %ld.", length, strlen(buffer));
+			logError(buff);
+			freeResources(context);
+			pthread_exit(NULL);
+		}
+	}
+
+	if ((length = send(context->socket, "\r\n", 2*sizeof(char), MSG_NOSIGNAL)) < 2) {
+		bzero(buff, 500);
+		sprintf(buff, "Not sent all bytes. Bytes sent: %d. Bytes needed to send: %d.", length, 2);
+		logError(buff);
+		freeResources(context);
+		pthread_exit(NULL);
+	}
+	if(request->body != NULL && request->bodySize > 0){
+
+		length = send(context->socket, request->body, request->bodySize*sizeof(char), MSG_NOSIGNAL);
+		if(length != (request->bodySize)*sizeof(char)){
+			bzero(buff, 500);
+			sprintf(buff, "Not sent all bytes. Bytes sent: %d. Bytes needed to send: %d.", length, request->bodySize);
+			logError(buff);
+			freeResources(context);
+			pthread_exit(NULL);
+		}
+	}
+
 	return 0;
 }
 
@@ -166,21 +244,10 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 		bzero(buffer, 4000);
 	}
 
-	if(send(sockfd, request->raw, request->reqSize*sizeof(char), 0) < 0){
-		sprintf(buffer,"Erro ao enviar requisição para o host: %s", request->hostname);
-		logSuccess(buffer);
-		bzero(buffer, 4000);
-		freeaddrinfo(servinfo);
-		close(sockfd);
-		pthread_exit(NULL);
-	} else {
-		sprintf(buffer,"Requisição enviada com sucesso para o host: %s", request->hostname);
-		logSuccess(buffer);
-		bzero(buffer, 4000);
-	}
-
 	context.socket = sockfd;
 	context.sockAddr = NULL;
+
+	sendRequest(&context, request);
 
 	response = httpReceiveResponse(&context);
 
@@ -222,9 +289,6 @@ int FreeHttpRequest(HttpRequest *request){
 		if(request->body != NULL){
 			free(request->body);
 		}
-		if(request->raw != NULL){
-			free(request->raw);
-		}
 
 		for(i = 0; i < request->headerCount; ++i){
 			if(request->headers[i].name != NULL){
@@ -258,9 +322,6 @@ int FreeHttpResponse(HttpResponse *response){
 		if(response->body != NULL){
 			free(response->body);
 		}
-		if(response->raw != NULL){
-			free(response->raw);
-		}
 
 		for(i = 0; i < response->headerCount; ++i){
 			if(response->headers[i].name != NULL){
@@ -282,10 +343,10 @@ int FreeHttpResponse(HttpResponse *response){
 
 */
 HttpResponse *httpReceiveResponse(ThreadContext *context){
-	int length, size, req_size, has_body = 0, is_chunked = 0;
+	int length, size, has_body = 0, is_chunked = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
-	char buffer[3000], buff;
+	char buffer[BUFFER_SIZE], buff;
 	HttpResponse *response = (HttpResponse *)malloc(sizeof(HttpResponse));
 	if(response == NULL){
 		logError("Malloc deu erro. Linha 260");
@@ -298,16 +359,14 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 	response->statusCode = -1;
 	response->reasonPhrase = NULL;
 	response->body = NULL;
-	response->raw = NULL;
 	response->headers = NULL;
 	response->headerCount = 0;
 	response->bodySize = 0;
 
-	req_size = 0;
 	size = 0;
 
 	/* A função bzero(void *ptr, int size) escreve 0 em size posições do vetor ptr. */
-	bzero(buffer, 3000);
+	bzero(buffer, BUFFER_SIZE);
 
 
 	/*
@@ -330,23 +389,13 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 			pthread_exit(NULL);
 		}
 
-		/* É armazenado em Raw a requisição completa. */
-		response->raw = (char *)realloc(response->raw, (req_size+1)*sizeof(char));
-		if(response->raw == NULL){
-			logError("Realloc deu erro. Linha 308. Raw");
-			freeResources(context);
-			pthread_exit(NULL);
-		}
-		response->raw[req_size] = buff;
-		++req_size;
-
 		/*
 
 			Trigger de saída do loop. Quando o primeiro '\n' é encontrado, a pirmeira linha da requisição foi totalmente adquirida.
 
 		*/
 		if(buff == '\n'){
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			break;
 		}
 
@@ -371,12 +420,12 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
 				printf("-------------------------> RESPONSE - Version: %s\n", response->version);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
 				printf("-------------------------> RESPONSE - Code: %d\n", response->statusCode);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(buff == '\r'){
 				response->reasonPhrase = (char *)malloc((size+1)*sizeof(char));
@@ -388,7 +437,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
 				printf("-------------------------> RESPONSE - Phrase: %s\n", response->reasonPhrase);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			}
 
@@ -399,14 +448,13 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 	}
 
 	/* Após a primeira linha da resposta ser adquirida, os headers são pegos. Na resposta o último parâmetro é NULL pelo fato de não ser armazenado na struct o Hostname. */
-	response->headers = getHeaders(context, &(response->raw), &(response->headerCount), &req_size, &has_body, &(response->bodySize), NULL, &is_chunked);
+	response->headers = getHeaders(context, &(response->headerCount), &has_body, &(response->bodySize), NULL, &is_chunked);
 
 	/* Caso a resposta tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
-		response->body = getBody(context, &(response->raw), &req_size, &(response->bodySize), is_chunked);
+		response->body = getBody(context, &(response->bodySize), is_chunked);
 	}
 
-	response->respSize = req_size;
 	//ResponsePrettyPrinter(response);
 	return response;
 }
@@ -419,10 +467,9 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 */
 
 HttpRequest *httpReceiveRequest(ThreadContext *context){
-	int length, size, req_size, has_body = 0, is_chunked = 0;
-
-	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
-	char buffer[3000], buff;
+	int length, size, has_body = 0, is_chunked = 0;
+	/* Buffer de 100000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
+	char buffer[BUFFER_SIZE], buff;
 	HttpRequest *request = (HttpRequest *)malloc(sizeof(HttpRequest));
 	if(request == NULL){
 		logError("Malloc deu erro. Linha 407.");
@@ -440,15 +487,13 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 	request->version = NULL;
 	request->hostname = NULL;
 	request->body = NULL;
-	request->raw = NULL;
 	request->headerCount = 0;
 	request->headers = NULL;
 	request->bodySize = 0;
 
-	req_size = 0;
 	size = 0;
 	/* A função bzero(void *ptr, int size) escreve 0 em size posições do vetor ptr. */
-	bzero(buffer, 3000);
+	bzero(buffer, BUFFER_SIZE);
 
 	/*
 
@@ -472,24 +517,13 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 			pthread_exit(NULL);
 		}
 
-		/* É armazenado em Raw a requisição completa. */
-		request->raw = (char *)realloc(request->raw, (req_size+1)*sizeof(char));
-		if(request->raw == NULL){
-					logError("Realloc deu erro. Linha 458. Raw");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
-		request->raw[req_size] = buff;
-		++req_size;
-
-
 		/*
 
 			Trigger de saída do loop. Quando o primeiro '\n' é encontrado, a pirmeira linha da requisição foi totalmente adquirida. O buffer é zerado e há a saída do loop.
 
 		*/
 		if(buff == '\n'){
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			break;
 		}
 
@@ -536,7 +570,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 				}
 			}
 
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else{
 			buffer[size] = buff;
@@ -567,16 +601,15 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 
 	/* Após a primeira linha da requisição ser adquirida, os headers são pegos. */
-	request->headers = getHeaders(context, &(request->raw), &(request->headerCount), &req_size, &has_body, &request->bodySize, &request->hostname, &is_chunked);
+	request->headers = getHeaders(context, &(request->headerCount), &has_body, &request->bodySize, &request->hostname, &is_chunked);
 
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
-		request->body = getBody(context, &(request->raw), &req_size, &request->bodySize, is_chunked);
+		request->body = getBody(context, &request->bodySize, is_chunked);
 	}
 
 	//RequestPrettyPrinter(request);
 
-	request->reqSize = req_size;
 	return request;
 }
 
@@ -591,12 +624,12 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 	A estrutura que armazena um header é composta por um "name", que simboliza o campo do header, e "value", que é valor do campo, que inclusive pode conter espaços.
 
 */
-HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked){
+HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body, int *body_size, char **hostname, int *is_chunked){
 	int length = 0, found_linebreak = 0, size = 0, found_name = 0;
-	char buff, buffer[100000], *value = NULL, *name = NULL;
+	char buff, buffer[BUFFER_SIZE], *value = NULL, *name = NULL;
 	HeaderField *headers = NULL;
 
-	bzero(buffer,100000);
+	bzero(buffer,BUFFER_SIZE);
 	while(1){
 		length = recv(context->socket, &buff, 1, MSG_WAITALL);
 		if(length < 1){
@@ -605,15 +638,6 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 			freeResources(context);
 			pthread_exit(NULL);
 		}
-
-		(*raw) = (char *)realloc((*raw), ((*req_size)+1)*sizeof(char));
-		if((*raw) == NULL){
-					logError("Realloc deu erro. Linha 594. Raw");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
-		(*raw)[(*req_size)] = buff;
-		(*req_size) = (*req_size) + 1;
 
 		/*
 			Verificações que detectam a sequência de saída do loop. Só há a saída quando a sequência lida é "\r\n\r\n".
@@ -653,7 +677,7 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 
 			found_linebreak = 1;
 			size = 0;
-			bzero(buffer, 100000);
+			bzero(buffer, BUFFER_SIZE);
 			continue;
 		}
 
@@ -679,7 +703,7 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 			found_name = 1;
 
 
-			bzero(buffer, 100000);
+			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else if(buff == '\r' && found_name == 1){
 			value = (char *)malloc((size+1)*sizeof(char));
@@ -710,10 +734,8 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 				*hostname = value;
 			}
 
-
-
 			found_name = 0;
-			bzero(buffer, 100000);
+			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else {
 			buffer[size] = buff;
@@ -725,7 +747,7 @@ HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, in
 	return headers;
 }
 
-int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize, int *bodySize) {
+int getChunkedSize(ThreadContext *context, char **body, int *bodySize) {
 	char buffer[100];
 	char byte;
 	int bufSize = 0;
@@ -750,12 +772,6 @@ int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize
 		}
 	}
 
-	(*raw) = (char *)realloc((*raw), ((*reqSize) + bufSize)*sizeof(char));
-	if((*raw) == NULL){
-		logError("Realloc deu erro. Linha 732. Raw");
-		freeResources(context);
-		pthread_exit(NULL);
-	}
 	(*body) = (char *)realloc((*body), ((*bodySize) + bufSize)*sizeof(char));
 	if((*body) == NULL){
 		logError("Realloc deu erro. Linha 738. Body");
@@ -763,10 +779,8 @@ int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize
 		pthread_exit(NULL);
 	}
 	for (i = 0; i < bufSize; i++) {
-		(*raw)[(*reqSize)+i] = buffer[i];
 		(*body)[(*bodySize)+i] = buffer[i];
 	}
-	(*reqSize) = (*reqSize) + bufSize;
 	(*bodySize) = (*bodySize) + bufSize;
 
 	sscanf(buffer, "%x\r\n", &parsed);
@@ -781,7 +795,7 @@ int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize
 	As variáveis raw e req_size são passadas por referência pois tem seu valor modificado dentro da função.
 
 */
-char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size, int is_chunked){
+char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 	int length, size = 0, i;
 	char *body = NULL, *buffer, buff[2], errorBuffer[300];
 
@@ -808,17 +822,6 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 			O espaço de aramazenamento do raw da requisição é aumentado para caber os bytes do corpo 	da requisição. A cópia é realizada byte a byte.
 
 		*/
-		(*raw) = (char *)realloc((*raw), ((*req_size)+(*body_size))*sizeof(char));
-		if((*raw) == NULL){
-			logError("Realloc deu erro. Linha 790. Raw");
-			freeResources(context);
-			pthread_exit(NULL);
-		}
-
-		for (size = 0; size < (*body_size); ++size){
-			(*raw)[(*req_size + size)] = body[size];
-		}
-		(*req_size) = (*req_size) + (*body_size);
 
 		/* O ponteiro é retornado com os dados do corpo. */
 		return body;
@@ -826,7 +829,7 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 
 		//printf("----------------------> Is chunked!\n");
 		while(1){
-			size = getChunkedSize(context, raw, &body, req_size, body_size);
+			size = getChunkedSize(context, &body, body_size);
 			//printf("SIZE: %d\n", size);
 
 			if(size < 1){
@@ -839,15 +842,6 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-				(*raw) = (char *)realloc((*raw), ((*req_size)+2)*sizeof(char));
-				if((*raw) == NULL){
-					logError("Realloc deu erro. Linha 819. Raw");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
-				(*raw)[(*req_size)] = '\r';
-				(*raw)[(*req_size+1)] = '\n';
-				*req_size = (*req_size) + 2;
 
 				body = (char *)realloc(body, ((*body_size)+2)*sizeof(char));
 				if(body == NULL){
@@ -882,19 +876,11 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-				(*raw) = (char *)realloc((*raw), ((*req_size)+size+2)*sizeof(char));
-				if((*raw) == NULL){
-					logError("Realloc deu erro. Linha 861. Raw");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
 
 
 				for (i = 0; i < (size+2); ++i){
-					(*raw)[(*req_size)+i] = buffer[i];
 					body[(*body_size)+i] = buffer[i];
 				}
-				*req_size = (*req_size) + size + 2;
 				*body_size = (*body_size) + size + 2;
 			}
 		}
@@ -932,11 +918,6 @@ HttpResponse *httpParseResponse(char *resp) {
 	req_size = 0;
 	size = 0;
 	bzero(buffer, 3000);
-
-	/*
-		O campo de Raw da resposta recebe o ponteiro da requisição raw inteira.
-	*/
-	response->raw = resp;
 
 
 	/*
@@ -1028,8 +1009,6 @@ HttpResponse *httpParseResponse(char *resp) {
 
 
 	//ResponsePrettyPrinter(response);
-
-	response->respSize = req_size;
 	return response;
 }
 
@@ -1207,11 +1186,6 @@ void ResponsePrettyPrinter(HttpResponse *response){
 	// 	}
 	// 	printf("\n");
 	// }
-
-	printf("Raw size: %d\n", response->respSize);
-	// for (i = 0; i < response->respSize; ++i){
-	// 	printf("%c", response->raw[i]);
-	// }
 	printf("\n");
 }
 
@@ -1239,11 +1213,5 @@ void RequestPrettyPrinter(HttpRequest *request){
 	// 	}
 	// 	printf("\n");
 	// }
-
-	printf("Raw size: %d\n", request->reqSize);
-	// for (i = 0; i < request->reqSize; ++i){
-	// 	printf("%c", request->raw[i]);
-	// }
-	printf("\n");
 
 }

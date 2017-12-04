@@ -5,7 +5,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *filename = getRequestFilename(request);
 	char key[HASH_SIZE];
 	char *file = NULL;
-	char *logStr = (char *)malloc((request->reqSize+SIZE_OF_MESSAGE)*sizeof(char));
+	char *logStr = (char *)malloc((BUFFER_SIZE)*sizeof(char));
 	HttpResponse *httpResponse = NULL;
 
 	getKeyFromFilename(key, filename);
@@ -20,7 +20,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 
 		httpResponse = httpParseResponse(file);
 
-		sprintf(logStr, "Successfully obtained response to request:\n %.200s", request->raw);
+		sprintf(logStr, "Successfully obtained response to request:\n %.200s", file);
 		logSuccess(logStr);
 	}
 
@@ -79,7 +79,8 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	char logStr[200];
 	char key[HASH_SIZE];
 	FILE *fp;
-	int responseLength = response->respSize;
+	int responseLength;
+	char *responseRaw = getResponseRaw(response, &responseLength);
 	struct stat fileStat;
 
 	getKeyFromFilename(key, filename);
@@ -110,7 +111,7 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 		return;
 	}
 
-	fprintf(fp, "%s", response->raw);
+	fprintf(fp, "%s", responseRaw);
 
 	fclose(fp);
 	pthread_mutex_lock(&queueMutex);
@@ -121,6 +122,10 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	pthread_mutex_unlock(&cacheMutex);
 
 	free(filename);
+}
+
+char *getResponseRaw(HttpResponse *response, int *length) {
+	return NULL;
 }
 
 int removeLRAResponse() {

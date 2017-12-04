@@ -22,8 +22,10 @@ void logMessage(char *message, int messageType) {
 	switch (messageType) {
 		case SUCCESS:
 			strcpy(header, "SUCCESS");
+			break;
 		case ERROR:
 			strcpy(header, "ERROR");
+			break;
 		default:
 			strcpy(header, "WARNING");
 			break;

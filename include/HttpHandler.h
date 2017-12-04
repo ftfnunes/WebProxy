@@ -11,6 +11,8 @@
 
 #define HTTP_HANDLER
 
+#define BUFFER_SIZE 100000
+
 extern int errno;
 
 /*
@@ -29,7 +31,7 @@ typedef enum methodType{
 } MethodType;
 
 /*
-	Struct para o armazenamento de um Header. "Name" representa o campo do header e "Value" o conteúdo de um header. 
+	Struct para o armazenamento de um Header. "Name" representa o campo do header e "Value" o conteúdo de um header.
 */
 typedef struct headerField{
 	char *name;
@@ -46,10 +48,8 @@ typedef struct httpRequest{
 	char *version; /* Versão da requisição. */
 	char *hostname; /* Hostname da requisição. Mesmo ponteiro que está no header, está aqui por questão de praticidade. */
 	char *body; /* Corpo da Requisição. */
-	char *raw;  /* String da requisição completa, com todos os headers e corpo. */
 	HeaderField *headers; /* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	int headerCount;  /* Número de Headers. */
-	int reqSize;
 	int bodySize;
 } HttpRequest;
 
@@ -61,10 +61,8 @@ typedef struct httpResponse{
 	short statusCode; /* Código de status da resposta http. */
 	char *reasonPhrase; /* Reason phrase da resposta http. */
 	char *body; /* Corpo da resposta. */
-	char *raw; /* String da resposta completa, com todos os headers e corpo. */
 	HeaderField *headers; /* Vetor de headers alocados dinâmicamente, usando o headerCount para controle.*/
 	int headerCount; /* Número de Headers. */
-	int respSize;
 	int bodySize;
 } HttpResponse;
 
@@ -77,9 +75,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context);
 void ResponsePrettyPrinter(HttpResponse *response);
 void RequestPrettyPrinter(HttpRequest *request);
 
-HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked);
+HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body, int *body_size, char **hostname, int *is_chunked);
 HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked);
-char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size, int is_chunked);
+char *getBody(ThreadContext *context, int *body_size, int is_chunked);
 char *getLocalBody(char *resp, int *req_size, int body_size, int is_chunked);
 
 int FreeHttpResponse(HttpResponse *response);
@@ -87,8 +85,10 @@ int FreeHttpRequest(HttpRequest *request);
 
 HttpResponse *httpParseResponse(char *response);
 
-int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize, int *bodySize);
+int getChunkedSize(ThreadContext *context, char **body, int *bodySize);
 
+int sendRequest(ThreadContext *context, HttpRequest *request);
 
+void freeResources(ThreadContext *context);
 
 #endif

@@ -89,4 +89,6 @@ char *getUrl(HttpRequest *request);
 
 int shouldBeCached(HttpResponse *response);
 
+char *getResponseRaw(HttpResponse *response, int *length);
+
 #endif
