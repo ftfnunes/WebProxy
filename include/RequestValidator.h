@@ -8,16 +8,6 @@
 
 #define REQUEST_VALIDATOR
 
-typedef struct node {
-	char *string;
-	struct node *next;
-} Node;
-
-typedef struct {
-	Node *firstNode;
-	Node *lastNode;
-} List;
-
 typedef struct validationResult{
 	short isOnBlacklist;
 	short isOnWhitelist;
