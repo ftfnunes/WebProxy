@@ -78,7 +78,7 @@ int main() {
         printf("%s\t", cur->key);
     }
     printf("\n");
-    
+
     printf("\n\nIs expired? %d\n", isExpired(cachedResponse));
     printf("\nShould be cached? %d\n", shouldBeCached(cachedResponse));
     return 0;
