@@ -76,14 +76,14 @@ void ResponsePrettyPrinter(HttpResponse *response);
 void RequestPrettyPrinter(HttpRequest *request);
 
 HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body, int *body_size, char **hostname, int *is_chunked);
-HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked);
+HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
 char *getBody(ThreadContext *context, int *body_size, int is_chunked);
-char *getLocalBody(char *resp, int *req_size, int body_size, int is_chunked);
+char *getLocalBody(char *resp, int *req_size, int body_size);
 
 int FreeHttpResponse(HttpResponse *response);
 int FreeHttpRequest(HttpRequest *request);
 
-HttpResponse *httpParseResponse(char *response);
+HttpResponse *httpParseResponse(char *response, int length);
 
 int getChunkedSize(ThreadContext *context, char **body, int *bodySize);
 

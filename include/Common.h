@@ -13,10 +13,24 @@
 #define FALSE 0
 #define HASH_SIZE SHA256_DIGEST_LENGTH*2+1
 
+typedef struct node {
+	char *string;
+	struct node *next;
+} Node;
+
+typedef struct {
+	Node *firstNode;
+	Node *lastNode;
+} List;
+
 struct socket_str {
 	struct sockaddr_in* sockAddr;
 	int socket;
+	List *whitelist;
+	List *blacklist;
+	List *denyTerms;
 };
+
 
 typedef struct socket_str ThreadContext;
 

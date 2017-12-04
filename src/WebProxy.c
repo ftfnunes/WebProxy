@@ -57,11 +57,13 @@ void *handleSocket(void *arg) {
 	ThreadContext *context = (ThreadContext *)arg;
 	HttpRequest *request;
 	HttpResponse *response, *resp;
+	ValidationResult *validation;
 
 	logSuccess("Tentativa de conexao recebida.");
 	request = httpReceiveRequest(context);
 	//RequestPrettyPrinter(request);
 	logSuccess("Requisicao de conexao recebida.");
+	validation = ValidateRequest(request->hostname, request->body, request->bodySize, context->whitelist, context->blacklist, context->denyTerms);
 	response = httpSendRequest(request);
 
 	logSuccess("Resposta recebida.");
@@ -69,8 +71,13 @@ void *handleSocket(void *arg) {
 	//resp = httpParseResponse(response->raw);
 	//ResponsePrettyPrinter(resp);
 
+	freeValidationResult(validation);
+
+	validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
 	HttpSendResponse(context, response);
 	logSuccess("Dados de resposta enviados.");
+
+	freeValidationResult(validation);
 
 	// free(response->version);
 	// free(response->reasonPhrase);
@@ -103,6 +110,7 @@ int main() {
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 	struct timeval tv;
+	List *whitelist, *blacklist, *denyTerms;
 
 
 //	signal(SIGBUS, sig_handler);
@@ -130,6 +138,10 @@ int main() {
 	}
 	listen(srvSocket, MAX_N_OF_CONNECTIONS);
 
+	whitelist = getList("whitelist.txt");
+	blacklist = getList("blacklist.txt");
+	denyTerms = getList("denyTerms.txt");
+
 	while(TRUE) {
 		printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);
 		pthread_join(threads[nextThread], NULL);
@@ -141,6 +153,9 @@ int main() {
 
 		context->sockAddr = remote;
 		context->socket = rqstSocket;
+		context->whitelist = whitelist;
+		context->blacklist = blacklist;
+		context->denyTerms = denyTerms;
 
 		pthread_create(&threads[nextThread], NULL, handleSocket, context);
 		++nextThread;
@@ -148,6 +163,11 @@ int main() {
 			nextThread = 0;
 		}
 	}
+
+	freeList(whitelist);
+	freeList(blacklist);
+	freeList(denyTerms);
+
 	printf("\n\n\n\n\n\n\n\n\nWTF\n\n\n\n\n\n\n\n");
 	return 0;
 }
