@@ -895,11 +895,11 @@ char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 	"httpParseResponse": A partir do string Raw de uma response Http completa e realiza seu devido parse. A response é mapeada para uma struct do tipo HttpResponse, alocada dinâmicamente.
 
 */
-HttpResponse *httpParseResponse(char *resp) {
+HttpResponse *httpParseResponse(char *resp, int length) {
 	int size, body_size = 0, req_size, has_body = 0, is_chunked = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
-	char buffer[3000], buff;
+	char buffer[BUFFER_SIZE], buff;
 	HttpResponse *response = (HttpResponse *)malloc(sizeof(HttpResponse));
 	if(response == NULL){
 		logError("Realloc deu erro. Linha 896. Response");
@@ -917,7 +917,7 @@ HttpResponse *httpParseResponse(char *resp) {
 
 	req_size = 0;
 	size = 0;
-	bzero(buffer, 3000);
+	bzero(buffer, BUFFER_SIZE);
 
 
 	/*
@@ -997,14 +997,14 @@ HttpResponse *httpParseResponse(char *resp) {
 	/*
 		Após a primeira linha da resposta ser adquirida, os headers são pegos. Na resposta o último parâmetro é NULL pelo fato de não ser armazenado na struct o Hostname.
 	*/
-	response->headers = getLocalHeaders(resp, &(response->headerCount), &req_size, &has_body, &body_size, NULL, &is_chunked);
+	response->headers = getLocalHeaders(resp, &(response->headerCount), &req_size, &has_body, &body_size, NULL);
 
 
 	/*
 		Caso a resposta tenha corpo, ele é adquirido com a função getLocalBody, função que adquire o corpo a partir do Raw de uma requisição.
 	*/
 	if( has_body == 1 ){
-		response->body = getLocalBody(resp, &req_size, body_size, is_chunked);
+		response->body = getLocalBody(resp, &req_size, (length - req_size));
 	}
 
 
@@ -1026,10 +1026,10 @@ HttpResponse *httpParseResponse(char *resp) {
 */
 HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked){
 	int found_linebreak = 0, size = 0, found_name = 0;
-	char buff = '\0', buffer[3000], *value = NULL, *name = NULL;
+	char buff = '\0', buffer[BUFFER_SIZE], *value = NULL, *name = NULL;
 	HeaderField *headers = NULL;
 
-
+	bzero(buffer, BUFFER_SIZE);
 	while(1){
 		buff = resp[(*req_size)];
 		(*req_size) = (*req_size) + 1;
@@ -1140,7 +1140,7 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 /*
 	O corpo da requisição é lido do Raw da string. A posição inicial do corpo é dada por 'req_size'.
 */
-char *getLocalBody(char *resp, int *req_size, int body_size, int is_chunked){
+char *getLocalBody(char *resp, int *req_size, int body_size){
 	char *body;
 	int readings;
 
