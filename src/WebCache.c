@@ -7,6 +7,7 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *file = NULL;
 	char *logStr = (char *)malloc((BUFFER_SIZE)*sizeof(char));
 	HttpResponse *httpResponse = NULL;
+	int length;
 
 	getKeyFromFilename(key, filename);
 
@@ -133,9 +134,11 @@ char *getResponseRaw(HttpResponse *response, int *length) {
 	int size = 0;
 	int oldSize = 0;
 	int i;
+	char codeStr[5];
 
+	sprintf(codeStr, "%d", response->statusCode);
 	size += strlen(response->version);
-	size += strlen(response->statusCode) + 1;
+	size += strlen(codeStr) + 1;
 	size += strlen(response->reasonPhrase) + 2;
 	raw = (char *)malloc(size*sizeof(char));
 	sprintf(raw, "%s %d %s\r\n", response->version, response->statusCode, response->reasonPhrase);

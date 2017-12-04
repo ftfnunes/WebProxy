@@ -56,7 +56,7 @@ char convertToHexa(unsigned char c);
 
 char *calculateHash(char *request);
 
-char *readAsString(char *filename);
+char *readAsString(char *filename, int *length);
 
 time_t convertToTime(char *dateStr, int minutesToAdd);
 

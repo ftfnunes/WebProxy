@@ -896,7 +896,7 @@ char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 
 */
 HttpResponse *httpParseResponse(char *resp, int length) {
-	int size, body_size = 0, req_size, has_body = 0, is_chunked = 0;
+	int size, body_size = 0, req_size, has_body = 0;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[BUFFER_SIZE], buff;
@@ -1024,7 +1024,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 	A estrutura que armazena um header é composta por um "name", que simboliza o campo do header, e "value", que é valor do campo, que inclusive pode conter espaços.
 
 */
-HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked){
+HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
 	int found_linebreak = 0, size = 0, found_name = 0;
 	char buff = '\0', buffer[BUFFER_SIZE], *value = NULL, *name = NULL;
 	HeaderField *headers = NULL;
@@ -1062,7 +1062,6 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 			++(*headerCount);
 
 			if(strcmp("Transfer-Encoding", name) == 0 && (strstr(value, "chunked") != NULL || strstr(value, "chunked,") != NULL)){
-				(*is_chunked) = 1;
 				(*has_body) = 1;
 			}
 
