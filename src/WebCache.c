@@ -12,13 +12,13 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 
 	if (access(filename, F_OK) == 0) {
 		//O arquivo existe
-		file = readAsString(filename);
+		file = readAsString(filename, &length);
 
 		pthread_mutex_lock(&queueMutex);
 		push(fileQueue, key);
 		pthread_mutex_unlock(&queueMutex);
 
-		httpResponse = httpParseResponse(file);
+		httpResponse = httpParseResponse(file, length);
 
 		sprintf(logStr, "Successfully obtained response to request:\n %.200s", file);
 		logSuccess(logStr);
@@ -91,6 +91,8 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 		if (stat(filename, &fileStat) != 0) {
 			sprintf(logStr, "Could not get stats for file %s.", filename);
 			logError(logStr);
+			free(responseRaw);
+			return;
 		}
 		cacheSize -= fileStat.st_size;
 	}
@@ -98,6 +100,7 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	while (cacheSize + responseLength > MAX_CACHE_SIZE) {
 		if (!removeLRAResponse()) {
 			logWarning("No space available in cache.");
+			free(responseRaw);
 			return;
 		}
 	}
@@ -111,7 +114,7 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 		return;
 	}
 
-	fprintf(fp, "%s", responseRaw);
+	fwrite(responseRaw, sizeof(char), responseLength, fp);
 
 	fclose(fp);
 	pthread_mutex_lock(&queueMutex);
@@ -121,11 +124,38 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	cacheSize += responseLength;
 	pthread_mutex_unlock(&cacheMutex);
 
+	free(responseRaw);
 	free(filename);
 }
 
 char *getResponseRaw(HttpResponse *response, int *length) {
-	return NULL;
+	char *raw = NULL;
+	int size = 0;
+	int oldSize = 0;
+	int i;
+
+	size += strlen(response->version);
+	size += strlen(response->statusCode) + 1;
+	size += strlen(response->reasonPhrase) + 2;
+	raw = (char *)malloc(size*sizeof(char));
+	sprintf(raw, "%s %d %s\r\n", response->version, response->statusCode, response->reasonPhrase);
+
+	for (i = 0; i < response->headerCount; i++) {
+		oldSize = size;
+		size += strlen(response->headers[i].name) + 2;
+		size += strlen(response->headers[i].value) + 2;
+		raw = (char *)realloc(raw, size*sizeof(char));
+		sprintf(raw + oldSize, "%s: %s", response->headers[i].name, response->headers[i].value);
+	}
+
+	oldSize = size;
+	size += response->bodySize;
+	raw = (char *)realloc(raw, size*sizeof(char));
+	for (i = 0; i < response->bodySize; i++) {
+		raw[oldSize+i] = response->body[i];
+	}
+	*length = size;
+	return raw;
 }
 
 int removeLRAResponse() {
@@ -247,7 +277,7 @@ char *calculateHash(char *requestUrl) {
 }
 
 //Resultado é alocado dinamicamente.
-char *readAsString(char *filename) {
+char *readAsString(char *filename, int *length) {
 	FILE *fp = fopen(filename, "r");
 	char *file = NULL;
 	long int fileSize = 0;
@@ -267,7 +297,7 @@ char *readAsString(char *filename) {
 
 	fclose(fp);
 	file[fileSize] = '\0';
-
+	*length = fileSize;
 	return file;
 }
 
