@@ -20,6 +20,8 @@
 #define EXPIRES_HEADER "Expires"
 #define DATE_HEADER "Date"
 #define CACHE_CONTROL_HEADER "Cache-Control"
+#define PRIVATE_DIRECTIVE "private"
+#define NO_CACHE_DIRECTIVE "no-cache"
 #define CACHED_RESPONSE_LIFETIME 40 //In minutes
 #define SIZE_OF_MESSAGE 500
 // TODO: COLOCAR PASTA NO MAKEFILE
@@ -82,5 +84,7 @@ void freeFilesList(FileList *list);
 void fileListToQueue(FileList *list, Queue *queue);
 
 void insertInOrder(FileList *list, char *key, time_t lastAccess);
+
+char *getUrl(HttpRequest *request);
 
 #endif
