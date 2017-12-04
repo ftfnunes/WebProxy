@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <errno.h>
 
 extern int errno;
@@ -50,6 +53,7 @@ extern int errno;
 
 void *handleSocket(void *arg) {
 	int i;
+
 	ThreadContext *context = (ThreadContext *)arg;
 	HttpRequest *request;
 	HttpResponse *response, *resp;
@@ -81,10 +85,7 @@ void *handleSocket(void *arg) {
 	FreeHttpResponse(response);
 	logSuccess("Conexao fechada.");
 	printf("Conexao terminou.\n");
-	close(context->socket);
-
-	free(context->sockAddr);
-	free(context);
+	freeResources(context);
 	return NULL;
 }
 
@@ -101,8 +102,10 @@ int main() {
 	ThreadContext *context;
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
+	struct timeval tv;
 
-	signal(SIGBUS, sig_handler);
+
+//	signal(SIGBUS, sig_handler);
 
 
 	bzero(threads, MAX_N_OF_CONNECTIONS*sizeof(pthread_t));
@@ -116,6 +119,11 @@ int main() {
 	if ( setsockopt(srvSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 ) {
     	printf("Options failed\n");
 	}
+	tv.tv_sec = 30;  /* 30 Secs Timeout */
+	tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+	if (setsockopt(srvSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval)) != 0) {
+		printf("Error setting timeout\n");
+	}
 	if (bind(srvSocket, (struct sockaddr*)&local, sizeof(struct sockaddr)) != 0) {
 		printf("Binding error %d\n", errno);
 		return 1;
@@ -123,10 +131,12 @@ int main() {
 	listen(srvSocket, MAX_N_OF_CONNECTIONS);
 
 	while(TRUE) {
+		printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);
 		pthread_join(threads[nextThread], NULL);
+		printf("\n\n\n\n\n\n\n\n\n\nThread %d starting\n\n\n\n\n\n\n\n", nextThread);
 		remote = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
 		rqstSocket = accept(srvSocket, (struct sockaddr*) remote, &sockAddrSize);
-
+		printf("\n\n\n\n\n\n\n\nremote address = %ld\n\n\n\n\n\n\n", remote->sin_addr.s_addr);
 		context = (ThreadContext *)malloc(sizeof(ThreadContext));
 
 		context->sockAddr = remote;
@@ -138,6 +148,6 @@ int main() {
 			nextThread = 0;
 		}
 	}
-
+	printf("\n\n\n\n\n\n\n\n\nWTF\n\n\n\n\n\n\n\n");
 	return 0;
 }
