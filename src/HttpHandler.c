@@ -249,7 +249,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 		/* Leitura byte a byte do Socket. */
 		length = recv(context->socket, &buff, 1, 0);
 		if(length < 1){
-			printf("Error on receiving data from socket. Size < 0.\n");
+			printf("Error on receiving data from socket. Size < 0. on httpResponse\n");
 			exit(1);
 		}
 
@@ -306,28 +306,22 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 		}
 	}
 
-
 	/* Após a primeira linha da resposta ser adquirida, os headers são pegos. Na resposta o último parâmetro é NULL pelo fato de não ser armazenado na struct o Hostname. */
-	response->headers = getHeaders(context, &(response->raw), &(response->headerCount), &req_size, &has_body, &response->bodySize, NULL, &is_chunked);
-	
+	response->headers = getHeaders(context, &(response->raw), &(response->headerCount), &req_size, &has_body, &(response->bodySize), NULL, &is_chunked);
+
 	/* Caso a resposta tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
-		response->body = getBody(context, &(response->raw), &req_size, &response->bodySize, is_chunked);
+		response->body = getBody(context, &(response->raw), &req_size, &(response->bodySize), is_chunked);
 	}
 
-	response->raw = (char *)realloc(response->raw, (req_size+1)*sizeof(char));
-	response->raw[req_size] = '\0';
-	++req_size;
-
-	//ResponsePrettyPrinter(response);
-
 	response->respSize = req_size;
+	//ResponsePrettyPrinter(response);
 	return response;
 }
 
 
 /**
-	
+
 	"httpReceiveRequest": A partir do socket presente no context, a função recebe uma request Http completa e realiza seu devido parse. A request é mapeada para uma struct do tipo HttpRequest, alocada dinâmicamente.
 
 */
@@ -456,22 +450,19 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 	/* Após a primeira linha da requisição ser adquirida, os headers são pegos. */
 	request->headers = getHeaders(context, &(request->raw), &(request->headerCount), &req_size, &has_body, &request->bodySize, &request->hostname, &is_chunked);
-	
+
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){
 		request->body = getBody(context, &(request->raw), &req_size, &request->bodySize, is_chunked);
 	}
 
-	request->raw = (char *)realloc(request->raw, (req_size+1)*sizeof(char));
-	request->raw[req_size] = '\0';
-	++req_size;
 	//RequestPrettyPrinter(request);
 
 	request->reqSize = req_size;
 	return request;
 }
 
-/*  
+/*
 
 	Função que a partir de um socket do contexto, lê todos os headers de uma requisição ou resposta.
 
@@ -605,10 +596,10 @@ int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize
 	while (TRUE) {
 		length = recv(context->socket, &byte, 1, 0);
 		if(length < 1){
-			printf("Error on receiving data from socket. Size < 0.\n");
+			printf("Error on receiving data from socket. Size < 0. on getChunkedSize\n");
 			exit(1);
 		}
-		printf("Char: '%c'\n", byte);
+		//printf("Char: '%c'\n", byte);
 		buffer[bufSize] = byte;
 		++bufSize;
 		if (byte == '\n') {
@@ -643,59 +634,51 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 
 	if(is_chunked == 0){
 		/* É alocada memória para o corpo da requisição. */
-		body = (char *)malloc(((*body_size)+1)*sizeof(char));
+		body = (char *)malloc((*body_size)*sizeof(char));
 
 		/* A leitura é feita para o espaço criado para o corpo. */
 		length = recv(context->socket, body, (*body_size), MSG_WAITALL);
 		if(length < 0){
-			printf("Error on receiving data from socket. Size < 0.\n");
+			printf("Error on receiving data from socket. Size < 0. on getbody\n");
 			exit(1);
 		}
-		
-		body[*body_size] = '\0';
-	
 
 		/*
-		
-			O espaço de aramazenamento do raw da requisição é aumentado para caber os bytes do corpo 	da requisição. A cópia é realizada byte a byte.	
-		
+
+			O espaço de aramazenamento do raw da requisição é aumentado para caber os bytes do corpo 	da requisição. A cópia é realizada byte a byte.
+
 		*/
-		(*raw) = (char *)realloc((*raw), ((*req_size)+(*body_size)+1)*sizeof(char));
-		
+		(*raw) = (char *)realloc((*raw), ((*req_size)+(*body_size))*sizeof(char));
+
 		for (size = 0; size < (*body_size); ++size){
-			(*raw)[(*req_size)] = body[size];
-			++(*req_size);
+			(*raw)[(*req_size + size)] = body[size];
 		}
-	
-	
+		(*req_size) = (*req_size) + (*body_size);
+
 		/* O ponteiro é retornado com os dados do corpo. */
 		return body;
 	} else{
 
-		printf("----------------------> Is chunked!\n");
+		//printf("----------------------> Is chunked!\n");
 		while(1){
 			size = getChunkedSize(context, raw, &body, req_size, body_size);
-			printf("SIZE: %d\n", size);
+			//printf("SIZE: %d\n", size);
 
 			if(size < 1){
 				length = recv(context->socket, buff, 2*sizeof(char), 0);
-				if(length < 0){
+				if(length < 2){
 					logError("Error on receiving 2 chars from socket. Size < 0.\n");
 					printf("Errno: %d\n", errno);
 				}
-				(*raw) = (char *)realloc((*raw), ((*req_size)+3)*sizeof(char));
+				(*raw) = (char *)realloc((*raw), ((*req_size)+2)*sizeof(char));
 				(*raw)[(*req_size)] = '\r';
-				++(*req_size);
-				(*raw)[(*req_size)] = '\n';
-				++(*req_size);
+				(*raw)[(*req_size+1)] = '\n';
+				*req_size = (*req_size) + 2;
 
-				body = (char *)realloc(body, ((*body_size)+3)*sizeof(char));
+				body = (char *)realloc(body, ((*body_size)+2)*sizeof(char));
 				body[(*body_size)] = '\r';
-				++(*body_size);
-				body[(*body_size)] = '\n';
-				++(*body_size);
-				body[(*body_size)] = '\0';
-				++(*body_size);
+				body[(*body_size+1)] = '\n';
+				*body_size = (*body_size) + 2;
 
 				break;
 
@@ -703,35 +686,31 @@ char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size,
 				buffer = (char *)malloc((size+2)*sizeof(char));
 				length = recv(context->socket, buffer, (size+2)*sizeof(char), MSG_WAITALL);
 				if(length < 0){
-					logError("Error on receiving data from socket. Size < 0.\n");
+					logError("Error on receiving data from socket. Size < 0. \n");
 					exit(1);
 				}
-				printf("Size: %d - Length: %d\n", size, length);
+				//printf("Size: %d - Length: %d\n", size, length);
 
-				body = (char *)realloc(body, ((*body_size)+size+2)*sizeof(char)); 	 	
+				body = (char *)realloc(body, ((*body_size)+size+2)*sizeof(char));
 				(*raw) = (char *)realloc((*raw), ((*req_size)+size+2)*sizeof(char));
-				
+
 
 				for (i = 0; i < (size+2); ++i){
-					(*raw)[*req_size] = buffer[i]; 
-					++(*req_size);
-					body[*body_size] = buffer[i]; 
-					++(*body_size);
+					(*raw)[(*req_size)+i] = buffer[i];
+					body[(*body_size)+i] = buffer[i];
 				}
-
+				*req_size = (*req_size) + size + 2;
+				*body_size = (*body_size) + size + 2;
 			}
 		}
 	}
 
-	(*raw)[(*req_size)] = '\0';
-	++(*req_size);
 	return body;
-	
 }
 
 
 /**
-	
+
 	"httpParseResponse": A partir do string Raw de uma response Http completa e realiza seu devido parse. A response é mapeada para uma struct do tipo HttpResponse, alocada dinâmicamente.
 
 */
@@ -967,20 +946,18 @@ char *getLocalBody(char *resp, int *req_size, int body_size, int is_chunked){
 	char *body;
 	int readings;
 
-	body = (char *)malloc((body_size+1)*sizeof(char));
+	body = (char *)malloc((body_size)*sizeof(char));
 
 	readings = stringCopy(body, &(resp[(*req_size)]), body_size);
 	if(readings < body_size){
 		printf("Leitura não para body não realizado.\n");
 		exit(1);
 	}
-	
-	body[body_size] = '\0';
 
-	(*req_size) += body_size + 1; 
+	(*req_size) += body_size;
 
 	printf("Local body: %s\n\n", body);
-	
+
 
 	return body;
 }

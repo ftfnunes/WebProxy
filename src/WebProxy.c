@@ -5,6 +5,10 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <errno.h>
+
+extern int errno;
 
 /*void *handleSocket(void *arg) {
 	ThreadContext *context = (ThreadContext *)arg;
@@ -52,14 +56,14 @@ void *handleSocket(void *arg) {
 
 	logSuccess("Tentativa de conexao recebida.");
 	request = httpReceiveRequest(context);
-	RequestPrettyPrinter(request);
+	//RequestPrettyPrinter(request);
 	logSuccess("Requisicao de conexao recebida.");
 	response = httpSendRequest(request);
+
 	logSuccess("Resposta recebida.");
-	ResponsePrettyPrinter(response);
+	//ResponsePrettyPrinter(response);
 	//resp = httpParseResponse(response->raw);
 	//ResponsePrettyPrinter(resp);
-	
 
 	HttpSendResponse(context, response);
 	logSuccess("Dados de resposta enviados.");
@@ -71,18 +75,23 @@ void *handleSocket(void *arg) {
 	// 	free(response->headers[i].name);
 	// 	free(response->headers[i].value);
 	// }
+
 	FreeHttpRequest(request);
 	//FreeHttpResponse(resp);
 	FreeHttpResponse(response);
-	
 	logSuccess("Conexao fechada.");
 	printf("Conexao terminou.\n");
 	close(context->socket);
+
 	free(context->sockAddr);
 	free(context);
 	return NULL;
 }
 
+void sig_handler(int sigNum) {
+	printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\nSIGBUS!!!\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+	exit(sigNum);
+}
 
 int main() {
 	int srvSocket, rqstSocket;
@@ -93,6 +102,9 @@ int main() {
 	int nextThread = 0;
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 
+	signal(SIGBUS, sig_handler);
+
+
 	bzero(threads, MAX_N_OF_CONNECTIONS*sizeof(pthread_t));
 
 	initializeLog();
@@ -100,10 +112,17 @@ int main() {
 
 	configureSockAddr(&local, 32000, INADDR_ANY);
 	srvSocket = socket(AF_INET, SOCK_STREAM, 0);
-	bind(srvSocket, (struct sockaddr*)&local, sizeof(struct sockaddr));
+	int yes = 1;
+	if ( setsockopt(srvSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 ) {
+    	printf("Options failed\n");
+	}
+	if (bind(srvSocket, (struct sockaddr*)&local, sizeof(struct sockaddr)) != 0) {
+		printf("Binding error %d\n", errno);
+		return 1;
+	}
 	listen(srvSocket, MAX_N_OF_CONNECTIONS);
 
-	while(TRUE) {		
+	while(TRUE) {
 		pthread_join(threads[nextThread], NULL);
 		remote = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
 		rqstSocket = accept(srvSocket, (struct sockaddr*) remote, &sockAddrSize);
