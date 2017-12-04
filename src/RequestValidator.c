@@ -88,11 +88,11 @@ void printList(List* list){
 }
 
 /*Essa funcao retorna uma string alocada dinamicamente, nao esquecer do free(...)!!*/
-char* toLowerCase(char string[]){
+char* toLowerCase(char string[], int stringSize){
 	int i;
-	char *lowerCaseString = (char *)malloc(strlen(string)*sizeof(char));
+	char *lowerCaseString = (char *)malloc(stringSize*sizeof(char));
 
-	for(i = 0; i < strlen(string); i++){
+	for(i = 0; i < stringSize; i++){
 		lowerCaseString[i] = tolower(string[i]);
 	}
 
@@ -100,6 +100,7 @@ char* toLowerCase(char string[]){
 }
 
 /*Essa funcao retorna uma string com memoria alocada dinamicamente, nao esquecer do free(...)!!*/
+/*Essa funcao deve ser usada SOMENTE para Blacklist ou Whitelist. Para DenyList, use a isOnDenyList(...)!!*/
 char* isOnList(List* list, char scannedString[]){ 
 	if(!list || !scannedString){
 		printf("Nem a List e nem a Scanned String podem ser NULL!\n");
@@ -108,12 +109,12 @@ char* isOnList(List* list, char scannedString[]){
 
 	Node* nodeAux = list->firstNode;
 	char *foundString = NULL;
-	char *lowerScannedString = toLowerCase(scannedString);
+	char *lowerScannedString = toLowerCase(scannedString, strlen(scannedString));
 
 	while(nodeAux){
 		if(strstr(lowerScannedString, nodeAux->string)){
-			foundString = (char *)malloc(strlen(scannedString)*sizeof(char));
-			strcpy(foundString, scannedString);
+			foundString = (char *)malloc(strlen(nodeAux->string)*sizeof(char));
+			strcpy(foundString, nodeAux->string);
 			return foundString;
 		}
 		nodeAux = nodeAux->next;
@@ -124,8 +125,35 @@ char* isOnList(List* list, char scannedString[]){
 	return foundString;
 }
 
+/*Essa funcao retorna uma string com memoria alocada dinamicamente, nao esquecer do free(...)!!*/
+/*Essa funcao deve ser usada SOMENTE para DenyList. Para Blacklist ou Whitelist, use a isOnList(...)!!*/
+/*Diferente da isOnList, essa funcao usa nossa implementacao de strstr e recebe o tamanho do body, para resolver problemas relativos a \0's dentro deste*/
+char* isOnDenyList(List* denyList, char body[], int bodySize){ 
+	if(!denyList || !body){
+		printf("Nem a deny list e nem o body podem ser NULL!\n");
+		exit(1);
+	}
+
+	Node* nodeAux = denyList->firstNode;
+	char *foundString = NULL;
+	char *lowerBody = toLowerCase(body, bodySize);
+
+	while(nodeAux){
+		if(isSubstring(lowerBody, nodeAux->string, bodySize)){
+			foundString = (char *)malloc(strlen(nodeAux->string)*sizeof(char));
+			strcpy(foundString, nodeAux->string);
+			return foundString;
+		}
+		nodeAux = nodeAux->next;
+	}
+
+	free(lowerBody);
+
+	return foundString;
+}
+
 /*Essa funcao retorna um ValidationResult com uma string alocados dinamicamente, nao esquecer do freeValidationResult(...)!!*/
-ValidationResult* ValidateRequest(char *hostname, char *body, List *whiteList, List *blackList, List *denyTerms){
+ValidationResult* ValidateRequest(char *hostname, char *body, int bodySize, List *whiteList, List *blackList, List *denyTerms){
 	ValidationResult *vResult;
 	char *foundString = NULL;
 
@@ -150,7 +178,7 @@ ValidationResult* ValidateRequest(char *hostname, char *body, List *whiteList, L
 		return vResult;
 	}
 
-	foundString = isOnList(denyTerms, body);
+	foundString = isOnDenyList(denyTerms, body, bodySize);
 	if(foundString){
 		vResult->isOnDeniedTerms = TRUE;
 		vResult->deniedTerm = (char *)malloc(strlen(foundString)*sizeof(char));
@@ -163,7 +191,7 @@ ValidationResult* ValidateRequest(char *hostname, char *body, List *whiteList, L
 }
 
 /*Essa funcao retorna um ValidationResult com uma string alocados dinamicamente, nao esquecer do free dos 2!!*/
-ValidationResult* ValidateResponse(char *body, List *denyTerms){
+ValidationResult* ValidateResponse(char *body, int bodySize, List *denyTerms){
 	ValidationResult *vResult;
 	char *foundString = NULL;
 
@@ -172,7 +200,7 @@ ValidationResult* ValidateResponse(char *body, List *denyTerms){
 	vResult->isOnWhitelist = FALSE;
 	vResult->isOnBlacklist = FALSE;
 
-	foundString = isOnList(denyTerms, body);
+	foundString = isOnDenyList(denyTerms, body, bodySize);
 	if(foundString){
 		vResult->isOnDeniedTerms = TRUE;
 		vResult->deniedTerm = (char *)malloc(strlen(foundString)*sizeof(char));
