@@ -87,4 +87,6 @@ void insertInOrder(FileList *list, char *key, time_t lastAccess);
 
 char *getUrl(HttpRequest *request);
 
+int shouldBeCached(HttpResponse *response);
+
 #endif
