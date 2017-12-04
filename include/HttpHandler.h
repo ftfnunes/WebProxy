@@ -5,10 +5,13 @@
 #include <netdb.h>
 #include "Common.h"
 #include "Log.h"
+#include <errno.h>
 
 #ifndef HTTP_HANDLER
 
 #define HTTP_HANDLER
+
+extern int errno;
 
 /*
 	Enumeração para os tipos de requisição.
@@ -65,23 +68,26 @@ typedef struct httpResponse{
 	int bodySize;
 } HttpResponse;
 
-
+int HttpSendResponse(ThreadContext *context, HttpResponse *response);
 HttpResponse *httpSendRequest(HttpRequest *request);
+
 HttpResponse *httpReceiveResponse(ThreadContext *context);
 HttpRequest *httpReceiveRequest(ThreadContext *context);
 
 void ResponsePrettyPrinter(HttpResponse *response);
 void RequestPrettyPrinter(HttpRequest *request);
 
-HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
-HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname);
-char *getBody(ThreadContext *context, char **raw, int *req_size, int body_size);
-char *getLocalBody(char *resp, int *req_size, int body_size);
+HeaderField *getHeaders(ThreadContext *context, char **raw, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked);
+HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname, int *is_chunked);
+char *getBody(ThreadContext *context, char **raw, int *req_size, int *body_size, int is_chunked);
+char *getLocalBody(char *resp, int *req_size, int body_size, int is_chunked);
 
 int FreeHttpResponse(HttpResponse *response);
 int FreeHttpRequest(HttpRequest *request);
 
 HttpResponse *httpParseResponse(char *response);
+
+int getChunkedSize(ThreadContext *context, char **raw, char **body, int *reqSize, int *bodySize);
 
 
 

@@ -1,6 +1,6 @@
 IDIR =./include
 CC=gcc
-CFLAGS= -Wall -g -I$(IDIR) -lcrypto
+CFLAGS= -Wall -g -I$(IDIR) -lcrypto -pthread
 
 SRC_DIR = ./src
 
