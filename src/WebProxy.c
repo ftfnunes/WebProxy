@@ -5,6 +5,11 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 
 /*void *handleSocket(void *arg) {
 	ThreadContext *context = (ThreadContext *)arg;
@@ -44,8 +49,16 @@
 }
 */
 
+void killThread(int sign){
+	logSuccess("Matando a thread.");
+	pthread_exit(NULL);
+}
+
 void *handleSocket(void *arg) {
 	int i;
+
+	signal(SIGALRM, killThread);
+	alarm(10);
 	ThreadContext *context = (ThreadContext *)arg;
 	HttpRequest *request;
 	HttpResponse *response, *resp;
@@ -78,7 +91,7 @@ void *handleSocket(void *arg) {
 	logSuccess("Conexao fechada.");
 	printf("Conexao terminou.\n");
 	close(context->socket);
-	free(context->sockAddr);
+	free(context->sockAddr);	
 	free(context);
 	return NULL;
 }
@@ -103,8 +116,10 @@ int main() {
 	bind(srvSocket, (struct sockaddr*)&local, sizeof(struct sockaddr));
 	listen(srvSocket, MAX_N_OF_CONNECTIONS);
 
-	while(TRUE) {		
+	while(TRUE) {
+		printf("-----------------> MAIN - Antes do JOIN: %d\n", nextThread);		
 		pthread_join(threads[nextThread], NULL);
+		printf("-----------------> MAIN - Depois do JOIN\n");
 		remote = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
 		rqstSocket = accept(srvSocket, (struct sockaddr*) remote, &sockAddrSize);
 
