@@ -18,6 +18,115 @@
 #include "RequestValidator.h"
 #include <time.h>
 
+HeaderField *parseHeaderString(char *headers, int *headerCount){
+	int req_size = 0;
+	int size = strlen(headers), i = 0, j = 0, has_body = 0, body_size = 0;
+	HeaderField *head;
+	char buffer[1000000];
+
+	bzero(buffer, 1000000);
+	(*headerCount) = 0;
+	for(i = 0; i < size; ++i){
+		if(headers[i] == '\n' && i > 0){
+			if(headers[i-1] == '\r'){
+				buffer[j] = headers[i];
+				++j;
+			} else{
+				buffer[j] = '\r';
+				++j;
+				buffer[j] = '\n';
+				++j;
+			}
+			++(*headerCount);
+		} else{
+			buffer[j] = headers[i];
+			++j;
+		}
+	}
+
+	buffer[j] = '\r';
+	++j;
+	buffer[j] = '\n';
+	++j;
+
+	*headerCount = 0;
+
+	head = getLocalHeaders(&(buffer[0]), headerCount, &req_size, &has_body, &body_size, NULL);
+
+	return head;
+}
+
+void sendBuffer (GuiStruct *guiStruct){
+	char *str;
+	int i;
+
+	for(i = 0; i < guiStruct->request->headerCount; i++){
+		free(guiStruct->request->headers[i].name);
+		free(guiStruct->request->headers[i].value); 
+	}
+	free(guiStruct->request->headers); 
+
+	GtkTextIter start, end;
+	gtk_text_buffer_get_start_iter(guiStruct->buffer, &start);
+	gtk_text_buffer_get_end_iter(guiStruct->buffer, &end);
+	str = gtk_text_buffer_get_text(guiStruct->buffer, &start, &end, TRUE);
+
+	guiStruct->request->headers = parseHeaderString(str, &(guiStruct->request->headerCount)); 	
+
+  	free(guiStruct);
+}
+
+void activate (GtkApplication* app, HttpRequest *request){
+	GtkWidget *window;	
+	GtkWidget *view;
+	GtkTextBuffer *buffer;
+	GtkWidget *button;
+  	GtkWidget *button_box;
+  	GtkWidget *box;
+  	GuiStruct *guiStruct;
+  	char *string = GetHeadersString(request->headers, request->headerCount);
+
+	window = gtk_application_window_new (app);
+  	gtk_window_set_title (GTK_WINDOW (window), "Inspect");
+  	gtk_window_set_default_size (GTK_WINDOW (window), 400, 400);
+
+  	box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 50);
+	gtk_container_add (GTK_CONTAINER (window), box);
+
+  	view = gtk_text_view_new ();
+	buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (view));
+	gtk_text_buffer_set_text (buffer, string, strlen(string));
+	gtk_container_add (GTK_CONTAINER (box), view);
+
+	free(string);
+
+	button_box = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
+  	gtk_container_add (GTK_CONTAINER (box), button_box);
+
+  	guiStruct = (GuiStruct *)malloc(sizeof(GuiStruct));
+  	guiStruct->buffer = buffer;
+  	guiStruct->request = request;
+
+  	button = gtk_button_new_with_label ("Send");
+  	g_signal_connect_swapped (button, "clicked", G_CALLBACK (sendBuffer), guiStruct);
+  	g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_widget_destroy), window);
+  	gtk_container_add (GTK_CONTAINER (button_box), button);
+
+	gtk_widget_show_all (window);
+}
+
+int graphicInterface(HttpRequest *request){
+  	GtkApplication *app;
+  	int status;
+
+  	app = gtk_application_new ("org.bff", G_APPLICATION_FLAGS_NONE);
+  	g_signal_connect (app, "activate", G_CALLBACK (activate), request);
+  	status = g_application_run (G_APPLICATION (app), 0, NULL);
+  	g_object_unref (app);
+
+  	return status;
+}
+
 void freeResources(ThreadContext *context) {
 	close(context->socket);
 	free(context->sockAddr);
@@ -622,6 +731,12 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 	/* Após a primeira linha da requisição ser adquirida, os headers são pegos. */
 	request->headers = getHeaders(context, &(request->headerCount), &has_body, &request->bodySize, &request->hostname, &is_chunked);
+
+	if(context->inspect){
+		has_body = 0;
+		request->bodySize = 0;
+		graphicInterface(request);
+	}
 
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
 	if( has_body == 1 ){

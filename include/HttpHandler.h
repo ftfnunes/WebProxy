@@ -8,6 +8,7 @@
 #include <errno.h>
 #include "RequestValidator.h"
 #include <time.h>
+#include <gtk/gtk.h>
 
 #ifndef HTTP_HANDLER
 
@@ -67,6 +68,17 @@ typedef struct httpResponse{
 	int headerCount; /* Número de Headers. */
 	int bodySize;
 } HttpResponse;
+
+typedef struct guiStruct{
+	GtkTextBuffer *buffer;
+	HttpRequest *request;
+} GuiStruct;
+
+HeaderField *parseHeaderString(char *headers, int *headerCount);
+
+int graphicInterface(HttpRequest *request);
+void activate (GtkApplication* app, HttpRequest *request);
+void sendBuffer (GuiStruct *guiStruct);
 
 int HttpSendResponse(ThreadContext *context, HttpResponse *response);
 HttpResponse *httpSendRequest(HttpRequest *request);

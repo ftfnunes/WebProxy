@@ -1,6 +1,6 @@
 IDIR =./include
 CC=gcc
-CFLAGS= -Wall -g -I$(IDIR) -lcrypto -pthread
+CFLAGS= -Wall -g -I$(IDIR) -lcrypto -pthread `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0`
 
 SRC_DIR = ./src
 
