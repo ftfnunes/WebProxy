@@ -74,7 +74,7 @@ typedef struct guiStruct{
 	HttpRequest *request;
 } GuiStruct;
 
-HeaderField *parseHeaderString(char *headers, int *headerCount);
+HeaderField *parseHeaderString(char *headers, int *headerCount, char **hostname);
 
 int graphicInterface(HttpRequest *request);
 void activate (GtkApplication* app, HttpRequest *request);

@@ -18,11 +18,11 @@
 #include "RequestValidator.h"
 #include <time.h>
 
-HeaderField *parseHeaderString(char *headers, int *headerCount){
+HeaderField *parseHeaderString(char *headers, int *headerCount, char **hostname){
 	int req_size = 0;
 	int size = strlen(headers), i = 0, j = 0, has_body = 0, body_size = 0;
 	HeaderField *head;
-	char buffer[1000000];
+	char buffer[1000000], *strbuff;
 
 	bzero(buffer, 1000000);
 	(*headerCount) = 0;
@@ -49,9 +49,14 @@ HeaderField *parseHeaderString(char *headers, int *headerCount){
 	buffer[j] = '\n';
 	++j;
 
-	*headerCount = 0;
+	strbuff = (char *)calloc(j+1, sizeof(char));
+	for (i = 0; i < j; i++) {
+		strbuff[i] = buffer[i];
+	}
 
-	head = getLocalHeaders(&(buffer[0]), headerCount, &req_size, &has_body, &body_size, NULL);
+	(*headerCount) = 0;
+
+	head = getLocalHeaders(strbuff, headerCount, &req_size, &has_body, &body_size, hostname);
 
 	return head;
 }
@@ -62,22 +67,22 @@ void sendBuffer (GuiStruct *guiStruct){
 
 	for(i = 0; i < guiStruct->request->headerCount; i++){
 		free(guiStruct->request->headers[i].name);
-		free(guiStruct->request->headers[i].value); 
+		free(guiStruct->request->headers[i].value);
 	}
-	free(guiStruct->request->headers); 
+	free(guiStruct->request->headers);
 
 	GtkTextIter start, end;
 	gtk_text_buffer_get_start_iter(guiStruct->buffer, &start);
 	gtk_text_buffer_get_end_iter(guiStruct->buffer, &end);
 	str = gtk_text_buffer_get_text(guiStruct->buffer, &start, &end, TRUE);
 
-	guiStruct->request->headers = parseHeaderString(str, &(guiStruct->request->headerCount)); 	
+	guiStruct->request->headers = parseHeaderString(str, &(guiStruct->request->headerCount), &(guiStruct->request->hostname));
 
-  	free(guiStruct);
+  free(guiStruct);
 }
 
 void activate (GtkApplication* app, HttpRequest *request){
-	GtkWidget *window;	
+	GtkWidget *window;
 	GtkWidget *view;
 	GtkTextBuffer *buffer;
 	GtkWidget *button;
@@ -736,6 +741,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 		has_body = 0;
 		request->bodySize = 0;
 		graphicInterface(request);
+		RequestPrettyPrinter(request);
 	}
 
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
