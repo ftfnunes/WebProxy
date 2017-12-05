@@ -185,6 +185,7 @@ int main() {
 	whitelist = getList("whitelist.txt");
 	blacklist = getList("blacklist.txt");
 	denyTerms = getList("denyTerms.txt");
+	toLowerDenyTerms(denyTerms); /*transforma todos os deny terms em lower case, para comparar com o body, que tambem estara em lower case*/
 
 	while(TRUE) {
 		//printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);

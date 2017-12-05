@@ -99,6 +99,20 @@ char* toLowerCase(char string[], int stringSize){
 	return lowerCaseString;
 }
 
+void toLowerDenyTerms(List* list){
+	if(!list){
+		printf("A List de deny terms nao pode ser NULL!\n");
+		exit(1);
+	}
+
+	Node* nodeAux = list->firstNode;
+
+	while(nodeAux){
+		nodeAux->string = toLowerCase(nodeAux->string, strlen(nodeAux->string));
+		nodeAux = nodeAux->next;
+	}
+}
+
 /*Essa funcao retorna uma string com memoria alocada dinamicamente, nao esquecer do free(...)!!*/
 /*Essa funcao deve ser usada SOMENTE para Blacklist ou Whitelist. Para DenyList, use a isOnDenyList(...)!!*/
 char* isOnList(List* list, char scannedString[]){ 
