@@ -38,7 +38,7 @@ Queue *fileQueue;
 
 // O tamanho total da cache, para impedir o aumento além do limite.
 off_t cacheSize;
-
+off_t maxSize;
 //Estrutura auxiliar para se ordenar os arquivos na cache pelo arquivo acessado menos recentemente
 struct fileListNode {
     char *key;
@@ -67,7 +67,7 @@ time_t convertToTime(char *dateStr, int minutesToAdd);
 
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount);
 
-void initializeCache();
+void initializeCache(int sizeOfCache);
 
 char *getRequestFilename(HttpRequest *request);
 

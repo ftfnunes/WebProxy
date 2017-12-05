@@ -115,7 +115,7 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 		cacheSize -= fileStat.st_size;
 	}
 
-	while (cacheSize + responseLength > MAX_CACHE_SIZE) {
+	while (cacheSize + responseLength > maxSize) {
 		if (!removeLRAResponse()) {
 			logWarning("No space available in cache.");
 			free(responseRaw);
@@ -226,7 +226,8 @@ int removeLRAResponse() {
 }
 
 // Função que inicializa as variáveis globais utilizadas pela cache
-void initializeCache() {
+void initializeCache(int sizeOfCache) {
+	maxSize = sizeOfCache;
 	fileQueue = initializeQueue();
 	cacheSize = getCacheStatus(fileQueue);
 	pthread_mutex_init(&cacheMutex, NULL);

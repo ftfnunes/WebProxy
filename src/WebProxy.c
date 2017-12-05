@@ -186,20 +186,24 @@ int main(int argc, char **argv) {
 	struct timeval tv;
 	List *whitelist, *blacklist, *denyTerms;
 	int numOfConnections = MAX_N_OF_CONNECTIONS;
+	long int sizeOfCache = MAX_CACHE_SIZE;
 	int isInDebugMode = FALSE;
 
 	if (argc > 1) {
 		if (strcmp("debug", argv[1]) == 0) {
 			isInDebugMode = TRUE;
-		} else if (strcmp("-t", argv[1]) == 0) {
-			if (argc != 3) {
-				printf("Missing argumento for -t\n");
+		} else if (strcmp("-o", argv[1]) == 0) {
+			if (argc < 2) {
+				printf("Missing argument for -o\n");
 				exit(1);
 			} else {
 				numOfConnections = atoi(argv[2]);
 				if (numOfConnections > MAX_N_OF_CONNECTIONS || numOfConnections < 1) {
-					printf("The number of connections must be below %d\n", MAX_N_OF_CONNECTIONS);
+					printf("The number of connections must be below %d and above 0\n", MAX_N_OF_CONNECTIONS);
 					exit(1);
+				}
+				if (argc > 2) {
+					sizeOfCache = atoi(argv[3]);
 				}
 			}
 		} else {
@@ -216,7 +220,7 @@ int main(int argc, char **argv) {
 	bzero(threads, numOfConnections*sizeof(pthread_t));
 
 	initializeLog();
-	initializeCache();
+	initializeCache(sizeOfCache);
 
 	configureSockAddr(&local, 32000, INADDR_ANY);
 	srvSocket = socket(AF_INET, SOCK_STREAM, 0);
