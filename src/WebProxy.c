@@ -60,11 +60,13 @@ void *handleSocket(void *arg) {
 	HttpRequest *request;
 	HttpResponse *response = NULL;
 	ValidationResult *validation;
+	char buffer[500];
+	char *url;
 
-	logSuccess("Tentativa de conexao recebida.");
+	//logSuccess("Tentativa de conexao recebida.");
 	request = httpReceiveRequest(context);
 	//RequestPrettyPrinter(request);
-	logSuccess("Requisicao de conexao recebida.");
+	//logSuccess("Requisicao de conexao recebida.");
 	validation = ValidateRequest(request->hostname, request->body, request->bodySize, context->whitelist, context->blacklist, context->denyTerms);
 
 	if(validation->isOnWhitelist){
@@ -80,19 +82,23 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
-
+			url = getUrl(request);
+			sprintf(buffer, "Resposta expirada para url: %s", url);
+			logWarning(buffer);
+			free(url);
 			response = httpSendRequest(request);
+
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
 			}
 		}
 
 		FreeHttpRequest(request);
-		logSuccess("Resposta recebida.");
+		//logSuccess("Resposta recebida.");
 
 		HttpSendResponse(context, response);
 		FreeHttpResponse(response);
-		logSuccess("Dados de resposta enviados.");
+		//logSuccess("Dados de resposta enviados.");
 		freeResources(context);
 		pthread_exit(NULL);
 	}
@@ -128,7 +134,10 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
-			printf("EXPIRED\n\n");
+			url = getUrl(request);
+			sprintf(buffer, "Resposta expirada para url: %s", url);
+			logWarning(buffer);
+			free(url);
 			response = httpSendRequest(request);
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
@@ -136,7 +145,7 @@ void *handleSocket(void *arg) {
 		}
 
 		FreeHttpRequest(request);
-		logSuccess("Resposta recebida.");
+		//logSuccess("Resposta recebida.");
 
 		validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
 
@@ -151,7 +160,7 @@ void *handleSocket(void *arg) {
 		} else{
 			HttpSendResponse(context, response);
 			FreeHttpResponse(response);
-			logSuccess("Dados de resposta enviados.");
+			//logSuccess("Dados de resposta enviados.");
 			freeValidationResult(validation);
 			freeResources(context);
 			pthread_exit(NULL);

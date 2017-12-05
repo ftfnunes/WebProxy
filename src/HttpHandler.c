@@ -137,7 +137,7 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 	char buffer[BUFFER_SIZE], buff[500];
 	int i, length, foundConnection = FALSE;
 
-	logSuccess("Entrou no HttpSendResponse.");
+	//logSuccess("Entrou no HttpSendResponse.");
 	//logSuccess("Alocou memoria para o buffer.");
 
 	bzero(buffer, BUFFER_SIZE);
@@ -223,7 +223,7 @@ int sendRequest(ThreadContext *context, HttpRequest *request){
 	char buffer[BUFFER_SIZE], buff[BUFFER_SIZE];
 	int i, length, foundConnection = FALSE;
 
-	logSuccess("Entrou no sendRequest.");
+	//logSuccess("Entrou no sendRequest.");
 	//logSuccess("Alocou memoria para o buffer.");
 
 	bzero(buffer, BUFFER_SIZE);
@@ -313,13 +313,13 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 
 	bzero(buffer, 4000);
 
-	logSuccess("Request recebida em 'httpSendRequest'.");
+	//logSuccess("Request recebida em 'httpSendRequest'.");
 	memset(&hints, 0, sizeof(hints));
-	logSuccess("Memset realizado em 'httpSendRequest'.");
+	//logSuccess("Memset realizado em 'httpSendRequest'.");
 	hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
 	hints.ai_socktype = SOCK_STREAM;
 
-	printf("\n\n\n\n\n\n\n\n\nHost: %s\n", request->hostname);
+	//printf("\n\n\n\n\n\n\n\n\nHost: %s\n", request->hostname);
 	if ((rv = getaddrinfo(request->hostname, "http", &hints, &servinfo)) != 0) {
 		logSuccess("Erro ao obter informacoes de DNS.");
 	    pthread_exit(NULL);
@@ -327,13 +327,13 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 
 	/* O loop passa pelos endereços recebidos e busca um que não seja nulo e que seja possível conectar. */
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		logSuccess("Tentou criar o socket.");
+		//logSuccess("Tentou criar o socket.");
     	if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			logSuccess("Erro ao criar o socket.");
     	    continue;
     	}
 
-		logSuccess("Criou o socket, tentativa de conectar.");
+		//logSuccess("Criou o socket, tentativa de conectar.");
 	    if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 	        sprintf(buffer,"Erro ao tentar conectar com o servidor: %s", request->hostname);
 			logSuccess(buffer);
@@ -342,7 +342,7 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 	        continue;
 	    }
 
-		logSuccess("Conectou no socket do servidor.");
+		//logSuccess("Conectou no socket do servidor.");
     	break;
 	}
 
@@ -1425,7 +1425,6 @@ HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_re
 	time_t now = time(0);
 	struct tm tm = *gmtime(&now);
 	char buffer[1000];
-	int i;
 
 	bzero(buffer, 1000);
 
