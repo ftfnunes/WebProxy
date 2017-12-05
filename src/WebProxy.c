@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 		if (strcmp("debug", argv[1]) == 0) {
 			isInDebugMode = TRUE;
 		} else if (strcmp("-o", argv[1]) == 0) {
-			if (argc < 2) {
+			if (argc < 3) {
 				printf("Missing argument for -o\n");
 				exit(1);
 			} else {
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 					printf("The number of connections must be below %d and above 0\n", MAX_N_OF_CONNECTIONS);
 					exit(1);
 				}
-				if (argc > 2) {
+				if (argc > 3) {
 					sizeOfCache = atoi(argv[3]);
 				}
 			}
