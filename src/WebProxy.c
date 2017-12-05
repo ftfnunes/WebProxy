@@ -56,7 +56,7 @@ void *handleSocket(void *arg) {
 
 	ThreadContext *context = (ThreadContext *)arg;
 	HttpRequest *request;
-	HttpResponse *response;
+	HttpResponse *response = NULL;
 	ValidationResult *validation;
 
 	logSuccess("Tentativa de conexao recebida.");
@@ -68,28 +68,34 @@ void *handleSocket(void *arg) {
 	if(validation->isOnWhitelist){
 		freeValidationResult(validation);
 
+		if (request->type != PUT && request->type != POST && request->type != DELETE && request->type != PATCH) {
+			response = getResponseFromCache(request);
+		}
+
+		if (response == NULL) {
+			response = httpSendRequest(request);
+			if (shouldBeCached(response)) {
+				storeInCache(response, request);
+			}
+		} else if(isExpired(response)) {
+
+			response = httpSendRequest(request);
+			if (shouldBeCached(response)) {
+				storeInCache(response, request);
+			}
+		} else {
+			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
+		}
+
 		response = httpSendRequest(request);
 		FreeHttpRequest(request);
 		logSuccess("Resposta recebida.");
 
-		//ValidateResponse(response->body, response->bodySize, context->denyTerms);
-
-		// if(validation->isOnDeniedTerms){
-		// 	FreeHttpResponse(response);
-		// 	freeValidationResult(validation);
-		// 	response = deniedTermsResponseBuilder(validation, TRUE);
-		// 	HttpSendResponse(context, response);
-		// 	FreeHttpResponse(response);
-		// 	freeResources(context);
-		// 	pthread_exit(NULL);
-		// } else{
 		HttpSendResponse(context, response);
 		FreeHttpResponse(response);
 		logSuccess("Dados de resposta enviados.");
-		//freeValidationResult(validation);
 		freeResources(context);
 		pthread_exit(NULL);
-		//}
 	}
 
 	if(validation->isOnBlacklist){
@@ -113,7 +119,25 @@ void *handleSocket(void *arg) {
 	} else{
 		freeValidationResult(validation);
 
-		response = httpSendRequest(request);
+		if (request->type != PUT && request->type != POST && request->type != DELETE && request->type != PATCH) {
+			response = getResponseFromCache(request);
+		}
+
+		if (response == NULL) {
+			response = httpSendRequest(request);
+			if (shouldBeCached(response)) {
+				storeInCache(response, request);
+			}
+		} else if(isExpired(response)) {
+			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
+			response = httpSendRequest(request);
+			if (shouldBeCached(response)) {
+				storeInCache(response, request);
+			}
+		} else {
+			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
+		}
+
 		FreeHttpRequest(request);
 		logSuccess("Resposta recebida.");
 
@@ -163,7 +187,7 @@ int main() {
 	bzero(threads, MAX_N_OF_CONNECTIONS*sizeof(pthread_t));
 
 	initializeLog();
-	//initializeCache();
+	initializeCache();
 
 	configureSockAddr(&local, 32000, INADDR_ANY);
 	srvSocket = socket(AF_INET, SOCK_STREAM, 0);

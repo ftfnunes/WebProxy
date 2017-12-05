@@ -26,7 +26,7 @@
 #define CACHED_RESPONSE_LIFETIME 5 //In minutes
 #define SIZE_OF_MESSAGE 500
 #define CACHE_PATH "./cache" //Nao deve terminar com /
-#define MAX_CACHE_SIZE 1000000
+#define MAX_CACHE_SIZE 9000000
 
 pthread_mutex_t cacheMutex;
 pthread_mutex_t queueMutex;
