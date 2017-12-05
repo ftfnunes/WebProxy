@@ -7,6 +7,8 @@
 
 #define HASHTABLE_SIZE 1000000
 
+// Um nó possui referências para os elementos sucessores e antecessores na fila
+// e na sua lista de nós pertencentes à um bucket na hashtable.
 struct qnode {
     char *key;
     struct qnode *qNext;
@@ -19,6 +21,8 @@ typedef struct qnode QueueNode;
 
 typedef QueueNode** Hashtable;
 
+// A fila possui referência para seu início e para o seu fim. A hashtable é
+// utilizada para se localizar com baixa complexidade um elemento na fila.
 struct queue {
     QueueNode *first;
     QueueNode *last;

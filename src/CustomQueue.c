@@ -1,5 +1,6 @@
 #include "CustomQueue.h"
 
+// Remove o elemento do inicio da fila.
 char *pop(Queue *queue) {
     QueueNode *first = queue->first;
     char *key = NULL;
@@ -21,6 +22,8 @@ char *pop(Queue *queue) {
     return key;
 }
 
+// Insere um elemento no final da fila. Se o elemento já existir no meio da fila,
+// ele é removido e depois adicionado ao final.
 int push(Queue *queue, char *key) {
     QueueNode *node = getFromHashtable(queue->hashtable, key);
     QueueNode *last = queue->last;
@@ -57,6 +60,7 @@ int push(Queue *queue, char *key) {
     return TRUE;
 }
 
+// Remove o elemento de seu bucket na hashtable
 void removeFromHashtable(Hashtable hashtable, QueueNode* node) {
     if (node->tbPrev != NULL) {
         node->tbPrev->tbNext = node->tbNext;
@@ -68,6 +72,7 @@ void removeFromHashtable(Hashtable hashtable, QueueNode* node) {
     }
 }
 
+// Recupera um elemento específico, acessando-o pela hashtable.
 QueueNode *getFromHashtable(Hashtable hashtable, char *key) {
     QueueNode* bucket = hashtable[getHashFromKey(key)];
     QueueNode* cur = NULL;
@@ -81,6 +86,7 @@ QueueNode *getFromHashtable(Hashtable hashtable, char *key) {
     return NULL;
 }
 
+// Insere um elemento na hashtable
 void insertInHashtable(Hashtable hashtable, QueueNode *node) {
     long int index = getHashFromKey(node->key);
     QueueNode* bucket = hashtable[index];
@@ -116,6 +122,7 @@ long int getHashFromKey(char *key) {
     return (strtol(key+stringIndex, NULL, 16) % HASHTABLE_SIZE);
 }
 
+// inicializa fila
 Queue *initializeQueue() {
     Queue *queue = (Queue *)malloc(sizeof(Queue));
 

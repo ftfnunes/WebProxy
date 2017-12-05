@@ -28,19 +28,23 @@
 #define CACHE_PATH "./cache" //Nao deve terminar com /
 #define MAX_CACHE_SIZE 9000000
 
+// mutexes para controlar o acesso a recursos compartilhados.
 pthread_mutex_t cacheMutex;
 pthread_mutex_t queueMutex;
 
+// Fila dos arquivos acessados menos recentemente. A estrutura foi pensada de forma a possuir uma
+// baixa complexidade pois será um recurso compartilhado, e suas operações deveriam ser rápidas.
 Queue *fileQueue;
 
+// O tamanho total da cache, para impedir o aumento além do limite.
 off_t cacheSize;
 
+//Estrutura auxiliar para se ordenar os arquivos na cache pelo arquivo acessado menos recentemente
 struct fileListNode {
     char *key;
     time_t lastAccess;
     struct fileListNode *next;
 };
-
 typedef struct fileListNode FileListNode;
 
 typedef struct fileList {

@@ -58,6 +58,8 @@ void *handleSocket(void *arg) {
 	HttpRequest *request;
 	HttpResponse *response = NULL;
 	ValidationResult *validation;
+	char buffer[500];
+	char *url;
 
 	//logSuccess("Tentativa de conexao recebida.");
 	request = httpReceiveRequest(context);
@@ -78,8 +80,12 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
-
+			url = getUrl(request);
+			sprintf(buffer, "Resposta expirada para url: %s", url);
+			logWarning(buffer);
+			free(url);
 			response = httpSendRequest(request);
+
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
 			}
@@ -126,6 +132,10 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
+			url = getUrl(request);
+			sprintf(buffer, "Resposta expirada para url: %s", url);
+			logWarning(buffer);
+			free(url);
 			response = httpSendRequest(request);
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);

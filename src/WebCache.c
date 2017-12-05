@@ -1,6 +1,10 @@
 #include "WebCache.h"
 
-// retorna um HttpResponse alocado dinamicamente.
+// Recebe um request e verifica se há alguma response correspondente já em cache
+// Retorna essa response caso encontre, ou NULL caso contrário.
+// Caso o arquivo seja encontrado, este arquivo vai para o final da fila de arquivos
+// acessados menos recentemente.
+
 HttpResponse *getResponseFromCache(HttpRequest* request) {
 	char *filename = getRequestFilename(request);
 	char key[HASH_SIZE];
@@ -30,11 +34,18 @@ HttpResponse *getResponseFromCache(HttpRequest* request) {
 	return httpResponse;
 }
 
+
+// Recebe uma response, caso essa os cabeçalhos dessa response não estejam de acordo
+// com a política de expiração do proxy, retorna TRUE, caso contrário retorna FALSE.
+// A resposta é considerada expirada se a hora atual for maior do que a data indicada no cabeçalho "Expires"
+// ou se a hora atual for maior do que a data de emissão mais CACHED_RESPONSE_LIFETIME, caso o cabeçalho expires
+// não esteja presente
 int isExpired(HttpResponse *response){
 	char *expiresDateStr = NULL;
 	char *responseDateStr = NULL;
 	time_t expiresDate;
 	time_t now = time(NULL);
+	int isExpired = FALSE;
 
 	expiresDateStr = findHeaderByName(EXPIRES_HEADER, response->headers, response->headerCount);
 
@@ -43,17 +54,19 @@ int isExpired(HttpResponse *response){
 	} else {
 		responseDateStr = findHeaderByName(DATE_HEADER, response->headers, response->headerCount);
 		if (responseDateStr == NULL) {
-			return TRUE;
+			isExpired = TRUE;
 		}
 		expiresDate = convertToTime(responseDateStr, CACHED_RESPONSE_LIFETIME);
 	}
 	if (expiresDate < now) {
-		return TRUE;
+		isExpired = TRUE;
 	}
 
-	return FALSE;
+	return isExpired;
 }
 
+// Indica se a resposta pode ser inserida no cache. A resposta pode ser cacheada se
+// não contiver no cabeçalho Cache-Control as diretivas private e no-cache
 int shouldBeCached(HttpResponse *response) {
 	char *cacheControl = findHeaderByName(CACHE_CONTROL_HEADER, response->headers, response->headerCount);
 	char *buffer;
@@ -75,6 +88,10 @@ int shouldBeCached(HttpResponse *response) {
 	return TRUE;
 }
 
+// Armazena uma nove response na cache, de acordo com a request recebida.
+// Os arquivos de cache são considerados um recurso compartilhado entre as
+// threads, logo, utilizam de um lock para sincronização.
+// O arquivo novo é colocado no final da fila de arquivos acessados menos recentemente
 void storeInCache(HttpResponse *response, HttpRequest* request) {
 	char *filename = getRequestFilename(request);
 	char logStr[200];
@@ -129,6 +146,8 @@ void storeInCache(HttpResponse *response, HttpRequest* request) {
 	free(filename);
 }
 
+// Transforma uma response em uma string com a representação exata de uma resposta
+// HTTP.
 char *getResponseRaw(HttpResponse *response, int *length) {
 	char *raw = NULL;
 	int size = 0;
@@ -163,11 +182,12 @@ char *getResponseRaw(HttpResponse *response, int *length) {
 			raw[oldSize+i] = response->body[i];
 		}
 	}
-	
+
 	*length = size;
 	return raw;
 }
 
+// Remove o response acessado menos recentemente da cache, para liberar espaço
 int removeLRAResponse() {
 	char *key;
 	char *filename;
@@ -205,7 +225,7 @@ int removeLRAResponse() {
 	return TRUE;
 }
 
-
+// Função que inicializa as variáveis globais utilizadas pela cache
 void initializeCache() {
 	fileQueue = initializeQueue();
 	cacheSize = getCacheStatus(fileQueue);
@@ -215,7 +235,7 @@ void initializeCache() {
 
 //funções utilitárias
 
-// Calcula o tamanho do diretório que armazena as respostas cacheadas e gera configura a pilha com
+// Calcula o tamanho do diretório que armazena as respostas cacheadas e configura a fila com
 // as respostas accessadas menos recentemente.
 off_t getCacheStatus(Queue *queue) {
     DIR * dirp;
@@ -266,7 +286,7 @@ char convertToHexa(unsigned char c) {
 	return (char) c+'a'-10;
 }
 
-// Retorna a string do hash em base 16, alocada dinamicamente.
+// Retorna a string do hash de uma url em base 16, alocada dinamicamente.
 char *calculateHash(char *requestUrl) {
 	char *result = malloc(HASH_SIZE);
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -286,7 +306,7 @@ char *calculateHash(char *requestUrl) {
 	return result;
 }
 
-//Resultado é alocado dinamicamente.
+//Le um arquivo como uma string, alocada dinamicamente.
 char *readAsString(char *filename, int *length) {
 	FILE *fp = fopen(filename, "r");
 	char *file = NULL;
@@ -311,6 +331,8 @@ char *readAsString(char *filename, int *length) {
 	return file;
 }
 
+// Recebe a string que representa o tempo de uma requisição e retorna a sua representação
+// em segundos desde 1970
 time_t convertToTime(char *dateStr, int minutesToAdd){
 	struct tm date;
 
@@ -319,6 +341,7 @@ time_t convertToTime(char *dateStr, int minutesToAdd){
 	return timegm(&date);
 }
 
+// Recupera o valor de um cabeçalho pelo nome.
 char *findHeaderByName(char *name, HeaderField *headers, int headerCount) {
 	int i;
 	for (i = 0; i < headerCount; ++i) {
@@ -349,7 +372,7 @@ char *getUrl(HttpRequest *request) {
 	return url;
 }
 
-// Funções de manipulação de listas de arquivos
+// Retorna o nome do arquivo correspondente a uma request.
 char *getRequestFilename(HttpRequest *request) {
 	char *url = getUrl(request);
 	char *hash = calculateHash(url);
@@ -358,6 +381,8 @@ char *getRequestFilename(HttpRequest *request) {
 	free(url);
 	return filename;
 }
+
+// As funções abaixo são utilizadas para ordenar os arquivos de cache pelo tempo desde o ultimo acesso.
 
 FileListNode *createFileListNode(char *key, time_t lastAccess) {
 	FileListNode *node = (FileListNode *)malloc(sizeof(FileListNode));
@@ -377,6 +402,9 @@ FileList *createFileList() {
 	return list;
 }
 
+
+// Converte a lista na fila de arquivos acessados menos recentemente utilizada
+// no controle do tamanho da cache
 void fileListToQueue(FileList *list, Queue *queue) {
 	FileListNode *cur;
 	for (cur = list->start; cur != NULL; cur = cur->next) {
