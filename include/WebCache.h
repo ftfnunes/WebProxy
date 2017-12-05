@@ -22,7 +22,7 @@
 #define CACHE_CONTROL_HEADER "Cache-Control"
 #define PRIVATE_DIRECTIVE "private"
 #define NO_CACHE_DIRECTIVE "no-cache"
-#define CACHED_RESPONSE_LIFETIME 40 //In minutes
+#define CACHED_RESPONSE_LIFETIME 5 //In minutes
 #define SIZE_OF_MESSAGE 500
 #define CACHE_PATH "./cache" //Nao deve terminar com /
 #define MAX_CACHE_SIZE 1000000

@@ -967,12 +967,12 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 				}
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
-				printf("-------------------------> Response Version: %s\n", response->version);
+				//printf("-------------------------> Response Version: %s\n", response->version);
 				bzero(buffer, 3000);
 				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
-				printf("-------------------------> Response Code: %d\n", response->statusCode);
+				//printf("-------------------------> Response Code: %d\n", response->statusCode);
 				bzero(buffer, 3000);
 				size = 0;
 			} else if(buff == '\r'){
@@ -983,7 +983,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 				}
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
-				printf("-------------------------> Response Phrase: %s\n", response->reasonPhrase);
+				//printf("-------------------------> Response Phrase: %s\n", response->reasonPhrase);
 				bzero(buffer, 3000);
 				size = 0;
 			}

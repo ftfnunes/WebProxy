@@ -137,26 +137,33 @@ char *getResponseRaw(HttpResponse *response, int *length) {
 	char codeStr[5];
 
 	sprintf(codeStr, "%d", response->statusCode);
-	size += strlen(response->version);
+	size += strlen(response->version) + 1;
 	size += strlen(codeStr) + 1;
 	size += strlen(response->reasonPhrase) + 2;
-	raw = (char *)malloc(size*sizeof(char));
+	raw = (char *)malloc((size+1)*sizeof(char));
 	sprintf(raw, "%s %d %s\r\n", response->version, response->statusCode, response->reasonPhrase);
 
 	for (i = 0; i < response->headerCount; i++) {
 		oldSize = size;
 		size += strlen(response->headers[i].name) + 2;
 		size += strlen(response->headers[i].value) + 2;
-		raw = (char *)realloc(raw, size*sizeof(char));
-		sprintf(raw + oldSize, "%s: %s", response->headers[i].name, response->headers[i].value);
+		raw = (char *)realloc(raw, (size+1)*sizeof(char));
+		sprintf(raw + oldSize, "%s: %s\r\n", response->headers[i].name, response->headers[i].value);
 	}
-
-	oldSize = size;
-	size += response->bodySize;
+	size += 2;
 	raw = (char *)realloc(raw, size*sizeof(char));
-	for (i = 0; i < response->bodySize; i++) {
-		raw[oldSize+i] = response->body[i];
+	raw[size-1] = '\n';
+	raw[size-2] = '\r';
+
+	if (response->bodySize != 0) {
+		oldSize = size;
+		size += response->bodySize;
+		raw = (char *)realloc(raw, size*sizeof(char));
+		for (i = 0; i < response->bodySize; i++) {
+			raw[oldSize+i] = response->body[i];
+		}
 	}
+	
 	*length = size;
 	return raw;
 }

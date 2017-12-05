@@ -33,6 +33,8 @@ int main() {
     HttpResponse *mockResponse;
     HttpResponse *cachedResponse;
     QueueNode *cur;
+    int length;
+    char *raw;
 
     initializeCache();
 
@@ -45,8 +47,6 @@ int main() {
 
     request = (HttpRequest *)malloc(sizeof(HttpRequest));
 
-    request->raw = (char *)malloc((strlen(REQUEST)+1)*sizeof(char));
-    strcpy(request->raw, REQUEST);
     request->uri = (char *)malloc((strlen(URI)+1)*sizeof(char));
     strcpy(request->uri, URI);
     request->hostname = (char *)malloc((strlen(HOST)+1)*sizeof(char));
@@ -56,18 +56,47 @@ int main() {
     if (cachedResponse == NULL) {
         printf("Cache miss\n");
     } else {
-        printf("Cache HIT!\n%s", cachedResponse->raw);
+        raw = getResponseRaw(cachedResponse, &length);
+        printf("Cache HIT!\n");
+        fwrite(raw, sizeof(char), length, stdout);
+        printf("\n");
+        free(raw);
     }
 
     mockResponse = (HttpResponse *)malloc(sizeof(HttpResponse));
-    mockResponse->raw = (char *)malloc((strlen(RESPONSE)+1)*sizeof(char));
-    strcpy(mockResponse->raw, RESPONSE);
+    mockResponse->version = (char *)malloc(10*sizeof(char));
+    mockResponse->statusCode = 200;
+    mockResponse->reasonPhrase = (char *)malloc(3*sizeof(char));
+    strcpy(mockResponse->version, "HTTP/1.1");
+    strcpy(mockResponse->reasonPhrase, "OK");
+
+    mockResponse->headers = (HeaderField *)malloc(3*sizeof(HeaderField));
+    mockResponse->headerCount = 3;
+
+    mockResponse->headers[0].name = (char *)malloc(20*sizeof(char));
+    mockResponse->headers[0].value = (char *)malloc(50*sizeof(char));
+    strcpy(mockResponse->headers[0].name, "Cache-Control");
+    strcpy(mockResponse->headers[0].value, "public");
+
+    mockResponse->headers[1].name = (char *)malloc(20*sizeof(char));
+    mockResponse->headers[1].value = (char *)malloc(50*sizeof(char));
+    strcpy(mockResponse->headers[1].name, "Date");
+    strcpy(mockResponse->headers[1].value, "Sun, 5 Dec 2017 00:04:00 GMT");
+
+    mockResponse->headers[2].name = (char *)malloc(20*sizeof(char));
+    mockResponse->headers[2].value = (char *)malloc(50*sizeof(char));
+    strcpy(mockResponse->headers[2].name, "Expires");
+    strcpy(mockResponse->headers[2].value, "Sun, 5 Dec 2017 00:00:00 GMT");
 
     storeInCache(mockResponse, request);
 
     cachedResponse = getResponseFromCache(request);
     if (cachedResponse != NULL) {
-        printf("Cache HIT!\n%s", cachedResponse->raw);
+        raw = getResponseRaw(cachedResponse, &length);
+        printf("Cache HIT!\n");
+        fwrite(raw, sizeof(char), length, stdout);
+        printf("\n");
+        free(raw);
     } else {
         printf("response not found\n");
     }
