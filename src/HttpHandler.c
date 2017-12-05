@@ -110,7 +110,7 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 
 
 int sendRequest(ThreadContext *context, HttpRequest *request){
-	char buffer[BUFFER_SIZE], buff[500];
+	char buffer[BUFFER_SIZE], buff[BUFFER_SIZE];
 	int i, length, foundConnection = FALSE;
 
 	logSuccess("Entrou no sendRequest.");
@@ -121,12 +121,12 @@ int sendRequest(ThreadContext *context, HttpRequest *request){
 	sprintf(buffer, "%s %s %s\r\n", request->method, request->uri, request->version);
 	//logSuccess("Escreveu no buffer.");
 	length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
-	bzero(buff, 500);
+	bzero(buff, BUFFER_SIZE);
 	//printf("Envou dados. - Length: %d - Strlen: %ld.", length, strlen(buffer));
 	//logSuccess(buff);
 
 	if(length != (strlen(buffer))){
-		bzero(buff, 500);
+		bzero(buff, BUFFER_SIZE);
 		sprintf(buff, "Erro ao enviar primeira linha da request. Enviados: %d - Length: %ld.", length, strlen(buffer));
 		logError(buff);
 		freeResources(context);
@@ -150,7 +150,7 @@ int sendRequest(ThreadContext *context, HttpRequest *request){
 		}
 
 		if(length != (strlen(buffer))){
-			bzero(buff, 500);
+			bzero(buff, BUFFER_SIZE);
 			sprintf(buff, "Erro ao enviar header da response. Enviados: %d - Length: %ld. Name: %s - Value:%s", length, strlen(buffer), request->headers[i].name, request->headers[i].value);
 			logError(buff);
 			freeResources(context);
@@ -163,7 +163,7 @@ int sendRequest(ThreadContext *context, HttpRequest *request){
 		sprintf(buffer, "Connection: close\r\n");
 		length = send(context->socket, buffer, strlen(buffer)*sizeof(char), MSG_NOSIGNAL);
 		if(length != (strlen(buffer))){
-			bzero(buff, 500);
+			bzero(buff, BUFFER_SIZE);
 			sprintf(buff, "Erro ao enviar header da response. Enviados: %d - Length: %ld.", length, strlen(buffer));
 			logError(buff);
 			freeResources(context);
@@ -421,12 +421,12 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 				}
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
-				printf("-------------------------> RESPONSE - Version: %s\n", response->version);
+				//printf("-------------------------> RESPONSE - Version: %s\n", response->version);
 				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
-				printf("-------------------------> RESPONSE - Code: %d\n", response->statusCode);
+				//printf("-------------------------> RESPONSE - Code: %d\n", response->statusCode);
 				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(buff == '\r'){
@@ -438,7 +438,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 				}
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
-				printf("-------------------------> RESPONSE - Phrase: %s\n", response->reasonPhrase);
+				//printf("-------------------------> RESPONSE - Phrase: %s\n", response->reasonPhrase);
 				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			}
@@ -547,7 +547,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 				}
 				strcpy(request->method, buffer);
 				request->method[size] = '\0';
-				printf("---------------------> REQUEST: Method: %s\n", request->method);
+				//printf("---------------------> REQUEST: Method: %s\n", request->method);
 			} else{
 				if(request->uri == NULL){
 					request->uri = (char *)malloc((size+1)*sizeof(char));
@@ -558,7 +558,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 					}
 					strcpy(request->uri, buffer);
 					request->uri[size] = '\0';
-					printf("---------------------> REQUEST: Uri: %s\n", request->uri);
+					//printf("---------------------> REQUEST: Uri: %s\n", request->uri);
 				} else{
 					request->version = (char *)malloc((size+1)*sizeof(char));
 					if(request->version == NULL){
@@ -568,7 +568,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 					}
 					strcpy(request->version, buffer);
 					request->version[size] = '\0';
-					printf("---------------------> REQUEST: Version: %s\n", request->version);
+					//printf("---------------------> REQUEST: Version: %s\n", request->version);
 				}
 			}
 
@@ -660,10 +660,10 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 			//printf("Push headers.\n");
 			headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
 			if(headers == NULL){
-					logError("Realloc deu erro. Linha 619. Headers");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
+				logError("Realloc deu erro. Linha 619. Headers");
+				freeResources(context);
+				pthread_exit(NULL);
+			}
 			//printf("Deu push.\n");
 			//printf("Antes - Name: %s\nValue:%s\n\n", name, value);
 			headers[*headerCount].name = name;
@@ -671,7 +671,7 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 			//printf("Depois - Name: %s\nValue:%s\n\n", headers[*headerCount].name, headers[*headerCount].value);
 			++(*headerCount);
 
-			printf("Value: %s\n", value);
+			//printf("Value: %s\n", value);
 			if(strcmp("Transfer-Encoding", name) == 0 && (strstr(value, "chunked") != NULL || strstr(value, "chunked,") != NULL)){
 				(*is_chunked) = 1;
 				(*has_body) = 1;
@@ -694,14 +694,13 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 
 		*/
 		if(buff == ' ' && found_name == 0){
-			name = (char *)malloc(size*sizeof(char));
+			name = (char *)malloc((size+1)*sizeof(char));
 			if(name == NULL){
-					logError("Malloc deu erro. Linha 654. Name");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
+				logError("Malloc deu erro. Linha 654. Name");
+				freeResources(context);
+				pthread_exit(NULL);
+			}
 			strcpy(name, buffer);
-			name[size-1] = '\0';
 			found_name = 1;
 
 
@@ -710,10 +709,10 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 		} else if(buff == '\r' && found_name == 1){
 			value = (char *)malloc((size+1)*sizeof(char));
 			if(value == NULL){
-					logError("Malloc deu erro. Linha 667. Value");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
+				logError("Malloc deu erro. Linha 667. Value");
+				freeResources(context);
+				pthread_exit(NULL);
+			}
 			strcpy(value, buffer);
 			value[size] = '\0';
 
@@ -884,6 +883,7 @@ char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 					body[(*body_size)+i] = buffer[i];
 				}
 				*body_size = (*body_size) + size + 2;
+				free(buffer);
 			}
 		}
 	}
@@ -1070,7 +1070,7 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 
 			found_linebreak = 1;
 			size = 0;
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			continue;
 		}
 
@@ -1095,7 +1095,7 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 			found_name = 1;
 
 
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else if(buff == '\r' && found_name == 1){
 			value = (char *)malloc((size+1)*sizeof(char));
@@ -1126,7 +1126,7 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 			}
 
 			found_name = 0;
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else {
 			buffer[size] = buff;
