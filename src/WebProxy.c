@@ -51,6 +51,8 @@ extern int errno;
 }
 */
 
+
+
 void *handleSocket(void *arg) {
 	//int i;
 
@@ -242,6 +244,7 @@ int main(int argc, char **argv) {
 
 		context->sockAddr = remote;
 		context->socket = rqstSocket;
+		context->inspect = TRUE;
 		context->whitelist = whitelist;
 		context->blacklist = blacklist;
 		context->denyTerms = denyTerms;

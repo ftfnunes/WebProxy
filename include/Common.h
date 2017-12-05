@@ -26,6 +26,7 @@ typedef struct {
 struct socket_str {
 	struct sockaddr_in* sockAddr;
 	int socket;
+	short inspect;
 	List *whitelist;
 	List *blacklist;
 	List *denyTerms;

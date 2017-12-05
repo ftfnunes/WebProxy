@@ -1,13 +1,14 @@
 #include <gtk/gtk.h>
+#include <string.h>
 
-static void printBuffer (GtkTextBuffer *buffer){
+static void sendBuffer (GtkTextBuffer *buffer){
 	GtkTextIter start, end;
 	gtk_text_buffer_get_start_iter(buffer, &start);
 	gtk_text_buffer_get_end_iter(buffer, &end);
   g_print ("%s\n", gtk_text_buffer_get_text(buffer, &start, &end, TRUE));
 }
 
-static void activate (GtkApplication* app, gpointer user_data){
+static void activate (GtkApplication* app, char string[]){
 	GtkWidget *window;	
 	GtkWidget *view;
 	GtkTextBuffer *buffer;
@@ -24,28 +25,32 @@ static void activate (GtkApplication* app, gpointer user_data){
 
   view = gtk_text_view_new ();
 	buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (view));
-	gtk_text_buffer_set_text (buffer, "A EU VO GOSA", 12);
+	gtk_text_buffer_set_text (buffer, string, strlen(string));
 	gtk_container_add (GTK_CONTAINER (box), view);
 
 	button_box = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
   gtk_container_add (GTK_CONTAINER (box), button_box);
 
   button = gtk_button_new_with_label ("Send");
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (printBuffer), buffer);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (sendBuffer), buffer);
   g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_widget_destroy), window);
   gtk_container_add (GTK_CONTAINER (button_box), button);
 
 	gtk_widget_show_all (window);
 }
 
-int main (int argc, char **argv){
+int graphicInterface(char string[]){
   GtkApplication *app;
   int status;
 
   app = gtk_application_new ("org.bff", G_APPLICATION_FLAGS_NONE);
-  g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
-  status = g_application_run (G_APPLICATION (app), argc, argv);
+  g_signal_connect (app, "activate", G_CALLBACK (activate), string);
+  status = g_application_run (G_APPLICATION (app), 0, NULL);
   g_object_unref (app);
 
   return status;
+}
+
+int main (int argc, char **argv){
+  return graphicInterface("aaaaaaaaaai");
 }
