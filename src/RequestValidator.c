@@ -103,7 +103,7 @@ char* toLowerCase(char string[], int stringSize){
 /*Essa funcao deve ser usada SOMENTE para Blacklist ou Whitelist. Para DenyList, use a isOnDenyList(...)!!*/
 char* isOnList(List* list, char scannedString[]){ 
 	if(!list || !scannedString){
-		printf("Nem a List e nem a Scanned String podem ser NULL!\n");
+		printf("Nem a List e nem o Hostname podem ser NULL!\n");
 		exit(1);
 	}
 
@@ -129,10 +129,12 @@ char* isOnList(List* list, char scannedString[]){
 /*Essa funcao deve ser usada SOMENTE para DenyList. Para Blacklist ou Whitelist, use a isOnList(...)!!*/
 /*Diferente da isOnList, essa funcao usa nossa implementacao de strstr e recebe o tamanho do body, para resolver problemas relativos a \0's dentro deste*/
 char* isOnDenyList(List* denyList, char body[], int bodySize){ 
-	if(!denyList || !body){
-		printf("Nem a deny list e nem o body podem ser NULL!\n");
+	if(!denyList){
+		printf("A List nao pode ser NULL!\n");
 		exit(1);
 	}
+
+	if(!body) return NULL;
 
 	Node* nodeAux = denyList->firstNode;
 	char *foundString = NULL;
