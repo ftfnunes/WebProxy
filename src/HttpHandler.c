@@ -326,6 +326,7 @@ int FreeHttpResponse(HttpResponse *response){
 		}
 
 		for(i = 0; i < response->headerCount; ++i){
+			printf("\n\n\n\n\n\n\n\nNAME: %s - Size: %d\n\n\n\n\n\n\n\n\n\n", response->headers[i].name, strlen(response->headers[i].name));
 			if(response->headers[i].name != NULL){
 				free(response->headers[i].name);
 			}
@@ -345,7 +346,7 @@ int FreeHttpResponse(HttpResponse *response){
 
 */
 HttpResponse *httpReceiveResponse(ThreadContext *context){
-	int length, size, has_body = 0, is_chunked = 0;
+	int length, size, has_body = 0, is_chunked = 0, i;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[BUFFER_SIZE], buff;
@@ -419,7 +420,9 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-				strcpy(response->version, buffer);
+				for (i = 0; i < size; i++) {
+					response->version[i] = buffer[i];
+				}
 				response->version[size] = '\0';
 				printf("-------------------------> RESPONSE - Version: %s\n", response->version);
 				bzero(buffer, BUFFER_SIZE);
@@ -436,7 +439,10 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-				strcpy(response->reasonPhrase, buffer);
+				//strcpy(response->reasonPhrase, buffer);
+				for (i = 0; i < size; i++) {
+					response->reasonPhrase[i] = buffer[i];
+				}
 				response->reasonPhrase[size] = '\0';
 				printf("-------------------------> RESPONSE - Phrase: %s\n", response->reasonPhrase);
 				bzero(buffer, BUFFER_SIZE);
@@ -469,7 +475,7 @@ HttpResponse *httpReceiveResponse(ThreadContext *context){
 */
 
 HttpRequest *httpReceiveRequest(ThreadContext *context){
-	int length, size, has_body = 0, is_chunked = 0;
+	int length, size, has_body = 0, is_chunked = 0, i;
 	/* Buffer de 100000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[BUFFER_SIZE], buff;
 	HttpRequest *request = (HttpRequest *)malloc(sizeof(HttpRequest));
@@ -545,7 +551,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-				strcpy(request->method, buffer);
+				for (i = 0; i < size; i++) {
+					request->method[i] = buffer[i];
+				}
 				request->method[size] = '\0';
 				printf("---------------------> REQUEST: Method: %s\n", request->method);
 			} else{
@@ -556,7 +564,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 						freeResources(context);
 						pthread_exit(NULL);
 					}
-					strcpy(request->uri, buffer);
+					for (i = 0; i < size; i++) {
+						request->uri[i] = buffer[i];
+					}
 					request->uri[size] = '\0';
 					printf("---------------------> REQUEST: Uri: %s\n", request->uri);
 				} else{
@@ -566,7 +576,9 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 						freeResources(context);
 						pthread_exit(NULL);
 					}
-					strcpy(request->version, buffer);
+					for (i = 0; i < size; i++) {
+						request->version[i] = buffer[i];
+					}
 					request->version[size] = '\0';
 					printf("---------------------> REQUEST: Version: %s\n", request->version);
 				}
@@ -627,9 +639,11 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 
 */
 HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body, int *body_size, char **hostname, int *is_chunked){
-	int length = 0, found_linebreak = 0, size = 0, found_name = 0;
+	int length = 0, found_linebreak = 0, size = 0, found_name = 0, i;
 	char buff, buffer[BUFFER_SIZE], *value = NULL, *name = NULL;
-	HeaderField *headers = NULL;
+	HeaderField headers[1000], *retHeaders;
+
+	(*headerCount) = 0;
 
 	bzero(buffer,BUFFER_SIZE);
 	while(1){
@@ -658,12 +672,12 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 		*/
 		if(buff == '\n'){
 			//printf("Push headers.\n");
-			headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
-			if(headers == NULL){
-					logError("Realloc deu erro. Linha 619. Headers");
-					freeResources(context);
-					pthread_exit(NULL);
-				}
+			// headers = (HeaderField *)realloc(headers, ((*headerCount)+1)*sizeof(HeaderField));
+			// if(headers == NULL){
+			// 		logError("Realloc deu erro. Linha 619. Headers");
+			// 		freeResources(context);
+			// 		pthread_exit(NULL);
+			// 	}
 			//printf("Deu push.\n");
 			//printf("Antes - Name: %s\nValue:%s\n\n", name, value);
 			headers[*headerCount].name = name;
@@ -671,7 +685,7 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 			//printf("Depois - Name: %s\nValue:%s\n\n", headers[*headerCount].name, headers[*headerCount].value);
 			++(*headerCount);
 
-			printf("Value: %s\n", value);
+			printf("Name: %s - Value: %s\n", name, value);
 			if(strcmp("Transfer-Encoding", name) == 0 && (strstr(value, "chunked") != NULL || strstr(value, "chunked,") != NULL)){
 				(*is_chunked) = 1;
 				(*has_body) = 1;
@@ -694,13 +708,15 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 
 		*/
 		if(buff == ' ' && found_name == 0){
-			name = (char *)malloc(size*sizeof(char));
+			name = (char *)calloc(size, sizeof(char));
 			if(name == NULL){
 					logError("Malloc deu erro. Linha 654. Name");
 					freeResources(context);
 					pthread_exit(NULL);
-				}
-			strcpy(name, buffer);
+			}
+			for ( i = 0; i < size; i++) {
+					name[i] = buffer[i];
+			}
 			name[size-1] = '\0';
 			found_name = 1;
 
@@ -708,13 +724,20 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 			bzero(buffer, BUFFER_SIZE);
 			size = 0;
 		} else if(buff == '\r' && found_name == 1){
-			value = (char *)malloc((size+1)*sizeof(char));
+			if((size+1) > BUFFER_SIZE){
+				printf("\n\n\n\n\n\n\n\n\n\nSize: %d\nBuffer: %s\n\n\n\n\n\n\n\n", size+1, buffer);
+				exit(1);
+			}
+			value = (char *)calloc((size+1), sizeof(char));
 			if(value == NULL){
 					logError("Malloc deu erro. Linha 667. Value");
 					freeResources(context);
 					pthread_exit(NULL);
 				}
-			strcpy(value, buffer);
+			for ( i = 0; i < size; i++) {
+					value[i] = buffer[i];
+			}
+
 			value[size] = '\0';
 
 			/*
@@ -745,8 +768,13 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 		}
 	}
 
+	retHeaders = (HeaderField *)calloc((*headerCount), sizeof(HeaderField));
+	for (size = 0; size < (*headerCount); size++) {
+		retHeaders[size].name = headers[size].name;
+		retHeaders[size].value = headers[size].value;
+	}
 	/* Após adquirir todos os headers, a função retorna um ponteiro de HeaderField alocado dinâmicamente. */
-	return headers;
+	return retHeaders;
 }
 
 int getChunkedSize(ThreadContext *context, char **body, int *bodySize) {
@@ -884,6 +912,7 @@ char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 					body[(*body_size)+i] = buffer[i];
 				}
 				*body_size = (*body_size) + size + 2;
+				free(buffer);
 			}
 		}
 	}
@@ -898,7 +927,7 @@ char *getBody(ThreadContext *context, int *body_size, int is_chunked){
 
 */
 HttpResponse *httpParseResponse(char *resp, int length) {
-	int size, body_size = 0, req_size, has_body = 0;
+	int size, body_size = 0, req_size, has_body = 0, i;
 
 	/* Buffer de 3000, pois foi pesquisado que URL's com mais de 2000 caracteres podem não funcionar em todos as conexões cliente-servidor.*/
 	char buffer[BUFFER_SIZE], buff;
@@ -967,7 +996,9 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 					logError("Realloc deu erro. Linha 961. Version");
 					pthread_exit(NULL);
 				}
-				strcpy(response->version, buffer);
+				for (i = 0; i < size; i++) {
+					response->version[i] = buffer[i];
+				}
 				response->version[size] = '\0';
 				//printf("-------------------------> Response Version: %s\n", response->version);
 				bzero(buffer, BUFFER_SIZE);
@@ -983,7 +1014,9 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 					logError("Realloc deu erro. Linha 977. Phrase");
 					pthread_exit(NULL);
 				}
-				strcpy(response->reasonPhrase, buffer);
+				for (i = 0; i < size; i++) {
+					response->reasonPhrase[i] = buffer[i];
+				}
 				response->reasonPhrase[size] = '\0';
 				//printf("-------------------------> Response Phrase: %s\n", response->reasonPhrase);
 				bzero(buffer, BUFFER_SIZE);
@@ -1028,7 +1061,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 
 */
 HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *has_body, int *body_size, char **hostname){
-	int found_linebreak = 0, size = 0, found_name = 0;
+	int found_linebreak = 0, size = 0, found_name = 0, i;
 	char buff = '\0', buffer[BUFFER_SIZE], *value = NULL, *name = NULL;
 	HeaderField *headers = NULL;
 
@@ -1090,7 +1123,9 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 					logError("Realloc deu erro. Linha 1086. Name");
 					pthread_exit(NULL);
 				}
-			strcpy(name, buffer);
+				for (i = 0; i < (size-1); i++) {
+					name[i] = buffer[i];
+				}
 			name[size-1] = '\0';
 			found_name = 1;
 
@@ -1103,7 +1138,9 @@ HeaderField *getLocalHeaders(char *resp, int *headerCount, int *req_size, int *h
 					logError("Realloc deu erro. Linha 1099. Value");
 					pthread_exit(NULL);
 				}
-			strcpy(value, buffer);
+			for (i = 0; i < size; i++) {
+				value[i] = buffer[i];
+			}
 			value[size] = '\0';
 
 			/*
