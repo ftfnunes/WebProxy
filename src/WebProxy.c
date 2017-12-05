@@ -244,10 +244,10 @@ int main(int argc, char **argv) {
 
 		context->sockAddr = remote;
 		context->socket = rqstSocket;
-		context->inspect = TRUE;
 		context->whitelist = whitelist;
 		context->blacklist = blacklist;
 		context->denyTerms = denyTerms;
+		context->inspect = (isInDebugMode)?TRUE:FALSE;
 
 		pthread_create(&threads[nextThread], NULL, handleSocket, context);
 		++nextThread;
