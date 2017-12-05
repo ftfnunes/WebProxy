@@ -8,6 +8,8 @@
 
 #define REQUEST_VALIDATOR
 
+//Essa struct contem os resultados das verificacoes de whitelist, blacklist 
+//e denied terms, que sao feitas nas requests/responses
 typedef struct validationResult{
 	short isOnBlacklist;
 	short isOnWhitelist;

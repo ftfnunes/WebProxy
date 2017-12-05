@@ -1,6 +1,9 @@
 #include "RequestValidator.h"
 
-/*Essa funcao retorna uma List alocada dinamicamente, nao esquecer do freeList(...)!!*/
+
+
+//Esse funcao instancia e retorna uma estrutura de lista, que pode ser usada tanto para a blacklist, 
+//quanto para a whitelist ou para a lista de denied terms
 List* createList(){
 	List* list;
 	list = (List*)malloc(sizeof(List));
@@ -10,6 +13,7 @@ List* createList(){
 	return list;
 }
 
+//Essa funcao libera uma lista e todos recursos (nodes) que ela contem
 void freeList(List* list){
 	if(!list) return;
 
@@ -25,6 +29,8 @@ void freeList(List* list){
 	free(list);
 }
 
+//Essa funcao tem como objetivo adicionar uma nova string a uma lista.
+//Essa string virara um node dentro da lista.
 void addToList(List* list, char newString[]){
 	Node* newNode;
 
@@ -48,6 +54,8 @@ void addToList(List* list, char newString[]){
 	list->lastNode = newNode;
 }
 
+//Essa funcao tem como objetivo varrer um arquivo (blacklist/whitelist/denyList) e colocar 
+//todos os elementos desse arquivo numa lista (List) a qual a propria funcao instancia e retorna
 List* getList(char fileName[]){
 	FILE *fp;
 	char stringBuffer[MAX_URL_SIZE];
@@ -73,6 +81,7 @@ List* getList(char fileName[]){
 	return list;
 }
 
+//Imprime todos os elementos de uma determinada lista
 void printList(List* list){
 	if(!list){
 		printf("A List nao pode ser NULL!\n");
@@ -87,7 +96,10 @@ void printList(List* list){
 	}
 }
 
-/*Essa funcao retorna uma string alocada dinamicamente, nao esquecer do free(...)!!*/
+
+//Essa funcao recebe uma string, e o tamanho dela, e tem como objetivo
+//tranformar todos os caracteres da mesma em lower case.
+//(A funcao retorna a string transformada, deixando a string original intacta)
 char* toLowerCase(char string[], int stringSize){
 	int i;
 	char *lowerCaseString = (char *)malloc(stringSize*sizeof(char));
@@ -99,6 +111,7 @@ char* toLowerCase(char string[], int stringSize){
 	return lowerCaseString;
 }
 
+//Transforma todos os elementos de uma lista de denied terms em lower case
 void toLowerDenyTerms(List* list){
 	if(!list){
 		printf("A List de deny terms nao pode ser NULL!\n");
@@ -113,8 +126,9 @@ void toLowerDenyTerms(List* list){
 	}
 }
 
-/*Essa funcao retorna uma string com memoria alocada dinamicamente, nao esquecer do free(...)!!*/
-/*Essa funcao deve ser usada SOMENTE para Blacklist ou Whitelist. Para DenyList, use a isOnDenyList(...)!!*/
+//Essa funcao tem como objetivo verificar se a string escaneada possui, como substring, algum dos elementos presentes na lista.
+//Caso um elemento seja encontrado na scanned string, ele eh retornado.
+//(Essa funcao deve ser usada SOMENTE para Blacklist ou Whitelist. Para DenyList, use a isOnDenyList(...)!!)
 char* isOnList(List* list, char scannedString[]){ 
 	if(!list || !scannedString){
 		printf("Nem a List e nem o Hostname podem ser NULL!\n");
@@ -139,9 +153,10 @@ char* isOnList(List* list, char scannedString[]){
 	return foundString;
 }
 
-/*Essa funcao retorna uma string com memoria alocada dinamicamente, nao esquecer do free(...)!!*/
-/*Essa funcao deve ser usada SOMENTE para DenyList. Para Blacklist ou Whitelist, use a isOnList(...)!!*/
-/*Diferente da isOnList, essa funcao usa nossa implementacao de strstr e recebe o tamanho do body, para resolver problemas relativos a \0's dentro deste*/
+
+//Diferente da isOnList, essa funcao usa nossa implementacao de strstr e recebe o tamanho do body, para resolver problemas relativos a \0's dentro deste.
+//Tirando isso, ela tem o mesmo objetivo da isOnList, funcionando de forma quase identica.
+//(Essa funcao deve ser usada SOMENTE para DenyList. Para Blacklist ou Whitelist, use a isOnList(...)!!)
 char* isOnDenyList(List* denyList, char body[], int bodySize){ 
 	if(!denyList){
 		printf("A List nao pode ser NULL!\n");
@@ -168,7 +183,9 @@ char* isOnDenyList(List* denyList, char body[], int bodySize){
 	return foundString;
 }
 
-/*Essa funcao retorna um ValidationResult com uma string alocados dinamicamente, nao esquecer do freeValidationResult(...)!!*/
+//(FUNCAO PRINCIPAL DESTE MODULO)
+//Essa funcao tem como objetivo fazer todas as verificacoes de whitelist, blacklist e denied terms, baseado no hostname, body e tamanho do body da REQUEST.
+//Ela retorna um ValidationResult, que eh uma struct que contem os resultados das verificacoes
 ValidationResult* ValidateRequest(char *hostname, char *body, int bodySize, List *whiteList, List *blackList, List *denyTerms){
 	ValidationResult *vResult;
 	char *foundString = NULL;
@@ -206,7 +223,9 @@ ValidationResult* ValidateRequest(char *hostname, char *body, int bodySize, List
 	return vResult;
 }
 
-/*Essa funcao retorna um ValidationResult com uma string alocados dinamicamente, nao esquecer do free dos 2!!*/
+//(FUNCAO PRINCIPAL DESTE MODULO)
+//Essa funcao tem como objetivo fazer as verificacoes de denied terms, baseado no body e no tamanho do body da RESPONSE.
+//Ela retorna um ValidationResult, que eh uma struct que contem os resultados das verificacoes
 ValidationResult* ValidateResponse(char *body, int bodySize, List *denyTerms){
 	ValidationResult *vResult;
 	char *foundString = NULL;
