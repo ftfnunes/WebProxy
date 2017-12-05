@@ -33,7 +33,7 @@ int main(){
 
 	char fileWhitelist[] = "whitelist.txt";
 	char fileBlacklist[] = "blacklist.txt";
-	char fileDeny[] = "deny.txt";
+	char fileDeny[] = "denyTerms.txt";
 	List *whitelist, *blackList, *denyList;
 	ValidationResult *RequestVR, *ResponseVR;
 
@@ -43,6 +43,7 @@ int main(){
 	whitelist = getList(fileWhitelist);
 	blackList = getList(fileBlacklist);
 	denyList = getList(fileDeny);
+	toLowerDenyTerms(denyList);
 
 	printf("Imprimindo %s:\n", fileWhitelist);
 	printList(whitelist);

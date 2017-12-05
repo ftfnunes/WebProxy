@@ -21,6 +21,7 @@ void addToList(List* list, char newString[]);
 List* getList(char fileName[]);
 void printList(List* list);
 char* toLowerCase(char string[], int stringSize); /*Retorna um (char *)malloc, nao esquecer do free(...)!*/
+void toLowerDenyTerms(List* list);
 char* isOnList(List* list, char scannedString[]); /*Retorna um (char *)malloc, nao esquecer do free(...)!*/
 char* isOnDenyList(List* denyList, char body[], int bodySize); /*Retorna um (char *)malloc, nao esquecer do free(...)!*/
 ValidationResult* ValidateRequest(char *hostname, char *body, int bodySize, List *whiteList, List *blackList, List *denyTerms); /*Retorna um (ValidationResult *)malloc, nao esquecer do freeValidationResult(...)!*/

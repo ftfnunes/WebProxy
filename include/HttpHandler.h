@@ -97,5 +97,7 @@ HttpResponse *blacklistResponseBuilder();
 
 HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_response);
 
+char *GetHeadersString(HeaderField *headers, int headerCount);
+
 
 #endif

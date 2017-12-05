@@ -227,6 +227,7 @@ int main(int argc, char **argv) {
 	whitelist = getList("whitelist.txt");
 	blacklist = getList("blacklist.txt");
 	denyTerms = getList("denyTerms.txt");
+	toLowerDenyTerms(denyTerms); /*transforma todos os deny terms em lower case, para comparar com o body, que tambem estara em lower case*/
 
 
 	printf("Web Proxy started...\n");

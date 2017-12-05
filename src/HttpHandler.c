@@ -210,6 +210,7 @@ HttpResponse *httpSendRequest(HttpRequest *request){
 	hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
 	hints.ai_socktype = SOCK_STREAM;
 
+	printf("\n\n\n\n\n\n\n\n\nHost: %s\n", request->hostname);
 	if ((rv = getaddrinfo(request->hostname, "http", &hints, &servinfo)) != 0) {
 		logSuccess("Erro ao obter informacoes de DNS.");
 	    pthread_exit(NULL);
@@ -301,6 +302,8 @@ int FreeHttpRequest(HttpRequest *request){
 				free(request->headers[i].value);
 			}
 		}
+
+		free(request);
 	}
 
 
@@ -335,6 +338,8 @@ int FreeHttpResponse(HttpResponse *response){
 				free(response->headers[i].value);
 			}
 		}
+
+		free(response);
 	}
 
 
@@ -715,7 +720,7 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 					freeResources(context);
 					pthread_exit(NULL);
 			}
-			for ( i = 0; i < size; i++) {
+			for ( i = 0; i < (size-1); i++) {
 					name[i] = buffer[i];
 			}
 			name[size-1] = '\0';
@@ -1296,14 +1301,6 @@ HttpResponse *blacklistResponseBuilder(){
 	response->headers[1].value = (char *)calloc((strlen(buffer)+1), sizeof(char));
 	strcpy(response->headers[1].value, buffer);
 
-	// response->headers[2].name = (char *)calloc((strlen("Content-Type")+1), sizeof(char));
-	// strcpy(response->headers[2].name, "Content-Type");
-	//
-	// response->headers[2].value = (char *)calloc((strlen("text/html; charset=utf-8")+1), sizeof(char));
-	// strcpy(response->headers[2].value, "text/html; charset=utf-8");
-
-
-
 
 	return response;
 }
@@ -1312,9 +1309,10 @@ HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_re
 	HttpResponse *response;
 	time_t now = time(0);
 	struct tm tm = *gmtime(&now);
-	char buffer[100];
+	char buffer[1000];
+	int i;
 
-	bzero(buffer, 100);
+	bzero(buffer, 1000);
 
 	response = (HttpResponse *)malloc(sizeof(HttpResponse));
 
@@ -1354,11 +1352,25 @@ HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_re
 	response->headers[1].value = (char *)calloc((strlen(buffer)+1), sizeof(char));
 	strcpy(response->headers[1].value, buffer);
 
-	// response->headers[2].name = (char *)calloc((strlen("Content-Type")+1), sizeof(char));
-	// strcpy(response->headers[2].name, "Content-Type");
-	//
-	// response->headers[2].value = (char *)calloc((strlen("text/html; charset=utf-8")+1), sizeof(char));
-	// strcpy(response->headers[2].value, "text/html; charset=utf-8");
 
 	return response;
+}
+
+char *GetHeadersString(HeaderField *headers, int headerCount){
+	int i, size = 0, valueSize = 0, nameSize = 0;
+	char buffer[1000000], *str;
+
+	bzero(buffer, 1000000);
+
+	for(i = 0; i < headerCount; ++i){
+		nameSize = strlen(headers[i].name);
+		valueSize = strlen(headers[i].value);
+		sprintf(&(buffer[size]), "%s: %s\r\n", headers[i].name, headers[i].value);
+		size += valueSize + nameSize + 4;
+	}
+
+	str = (char *)calloc(size+1, sizeof(char));
+	strcpy(str, buffer);
+
+	return str;
 }
