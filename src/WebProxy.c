@@ -72,24 +72,24 @@ void *handleSocket(void *arg) {
 		FreeHttpRequest(request);
 		logSuccess("Resposta recebida.");
 
-		validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
+		//ValidateResponse(response->body, response->bodySize, context->denyTerms);
 
-		if(validation->isOnDeniedTerms){
-			FreeHttpResponse(response);
-			freeValidationResult(validation);
-			response = deniedTermsResponseBuilder(validation, TRUE);
-			HttpSendResponse(context, response);
-			FreeHttpResponse(response);
-			freeResources(context);
-			pthread_exit(NULL);
-		} else{
-			HttpSendResponse(context, response);
-			FreeHttpResponse(response);
-			logSuccess("Dados de resposta enviados.");
-			freeValidationResult(validation);
-			freeResources(context);
-			pthread_exit(NULL);
-		}
+		// if(validation->isOnDeniedTerms){
+		// 	FreeHttpResponse(response);
+		// 	freeValidationResult(validation);
+		// 	response = deniedTermsResponseBuilder(validation, TRUE);
+		// 	HttpSendResponse(context, response);
+		// 	FreeHttpResponse(response);
+		// 	freeResources(context);
+		// 	pthread_exit(NULL);
+		// } else{
+		HttpSendResponse(context, response);
+		FreeHttpResponse(response);
+		logSuccess("Dados de resposta enviados.");
+		//freeValidationResult(validation);
+		freeResources(context);
+		pthread_exit(NULL);
+		//}
 	}
 
 	if(validation->isOnBlacklist){
