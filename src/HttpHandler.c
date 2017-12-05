@@ -17,12 +17,14 @@
 #include <unistd.h>
 #include "RequestValidator.h"
 #include <time.h>
-
-HeaderField *parseHeaderString(char *headers, int *headerCount){
+/*
+	A partir de uma string inteira com todos os headers, é retornado um objeto com um array de objetos de HeaderField alocados dinâmicamente.
+*/
+HeaderField *parseHeaderString(char *headers, int *headerCount, char **hostname){
 	int req_size = 0;
 	int size = strlen(headers), i = 0, j = 0, has_body = 0, body_size = 0;
 	HeaderField *head;
-	char buffer[1000000];
+	char buffer[1000000], *strbuff;
 
 	bzero(buffer, 1000000);
 	(*headerCount) = 0;
@@ -49,35 +51,46 @@ HeaderField *parseHeaderString(char *headers, int *headerCount){
 	buffer[j] = '\n';
 	++j;
 
-	*headerCount = 0;
+	strbuff = (char *)calloc(j+1, sizeof(char));
+	for (i = 0; i < j; i++) {
+		strbuff[i] = buffer[i];
+	}
 
-	head = getLocalHeaders(&(buffer[0]), headerCount, &req_size, &has_body, &body_size, NULL);
+	(*headerCount) = 0;
+
+	head = getLocalHeaders(strbuff, headerCount, &req_size, &has_body, &body_size, hostname);
 
 	return head;
 }
 
+/*
+	Função de callback da janela de edição de Headers. A partir dos headers modificados, gera nova lista de headers, alocados dinâmicamente.
+*/
 void sendBuffer (GuiStruct *guiStruct){
 	char *str;
 	int i;
 
 	for(i = 0; i < guiStruct->request->headerCount; i++){
 		free(guiStruct->request->headers[i].name);
-		free(guiStruct->request->headers[i].value); 
+		free(guiStruct->request->headers[i].value);
 	}
-	free(guiStruct->request->headers); 
+	free(guiStruct->request->headers);
 
 	GtkTextIter start, end;
 	gtk_text_buffer_get_start_iter(guiStruct->buffer, &start);
 	gtk_text_buffer_get_end_iter(guiStruct->buffer, &end);
 	str = gtk_text_buffer_get_text(guiStruct->buffer, &start, &end, TRUE);
 
-	guiStruct->request->headers = parseHeaderString(str, &(guiStruct->request->headerCount)); 	
+	guiStruct->request->headers = parseHeaderString(str, &(guiStruct->request->headerCount), &(guiStruct->request->hostname));
 
-  	free(guiStruct);
+  free(guiStruct);
 }
 
+/*
+	Função que aloca recursos e configura a janela de edição de requisições.
+*/
 void activate (GtkApplication* app, HttpRequest *request){
-	GtkWidget *window;	
+	GtkWidget *window;
 	GtkWidget *view;
 	GtkTextBuffer *buffer;
 	GtkWidget *button;
@@ -115,6 +128,9 @@ void activate (GtkApplication* app, HttpRequest *request){
 	gtk_widget_show_all (window);
 }
 
+/*
+	Função chamada para ativação da janela de edição de headers. Ela chama a função "activate".
+*/
 int graphicInterface(HttpRequest *request){
   	GtkApplication *app;
   	int status;
@@ -127,12 +143,18 @@ int graphicInterface(HttpRequest *request){
   	return status;
 }
 
+/*
+	Função que libera recursos de context.
+*/
 void freeResources(ThreadContext *context) {
 	close(context->socket);
 	free(context->sockAddr);
 	free(context);
 }
 
+/*
+	Função que a partir de um contexto, envia no socket a response recebida como parâmetro.
+*/
 int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 	char buffer[BUFFER_SIZE], buff[500];
 	int i, length, foundConnection = FALSE;
@@ -218,7 +240,9 @@ int HttpSendResponse(ThreadContext *context, HttpResponse *response){
 	return 0;
 }
 
-
+/*
+	Função que a partir de um contexto, envia no socket a request recebida como parâmetro.
+*/
 int sendRequest(ThreadContext *context, HttpRequest *request){
 	char buffer[BUFFER_SIZE], buff[BUFFER_SIZE];
 	int i, length, foundConnection = FALSE;
@@ -303,6 +327,9 @@ int sendRequest(ThreadContext *context, HttpRequest *request){
 	return 0;
 }
 
+/*
+	A partir de uma request recebida, busca o destino original da request com o hostname, envia a request, faz o parse da response do servidor e retorna a response.
+*/
 HttpResponse *httpSendRequest(HttpRequest *request){
 	HttpResponse *response = NULL;
 	ThreadContext context;
@@ -736,6 +763,7 @@ HttpRequest *httpReceiveRequest(ThreadContext *context){
 		has_body = 0;
 		request->bodySize = 0;
 		graphicInterface(request);
+		RequestPrettyPrinter(request);
 	}
 
 	/* Caso a requisição tenha corpo, ele é adquirido com a função getBody. */
@@ -898,6 +926,9 @@ HeaderField *getHeaders(ThreadContext *context, int *headerCount, int *has_body,
 	return retHeaders;
 }
 
+/*
+	Função que lê uma linha da requisição que possui o tamanho do chunk de body a ser lido, retornando como inteiro esse tamanho.
+*/
 int getChunkedSize(ThreadContext *context, char **body, int *bodySize) {
 	char buffer[100];
 	char byte;
@@ -1376,7 +1407,9 @@ void RequestPrettyPrinter(HttpRequest *request){
 
 }
 
-
+/*
+	Função que cria uma response específica para ocorrência de um hostname em blackList.
+*/
 HttpResponse *blacklistResponseBuilder(){
 	HttpResponse *response;
 	time_t now = time(0);
@@ -1420,6 +1453,9 @@ HttpResponse *blacklistResponseBuilder(){
 	return response;
 }
 
+/*
+	Função que cria uma response específica para ocorrência de um denied term em uma requisição ou responsta. A flag "is_response" indica o tipo, modificando a reason phrase.
+*/
 HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_response){
 	HttpResponse *response;
 	time_t now = time(0);
@@ -1470,6 +1506,9 @@ HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_re
 	return response;
 }
 
+/*
+	Função que a partir de uma lista de headers, gera uma string concatenando todos os headers. A string gerada é igual ao conjunto de headers em formato Raw que está presente em uma requisição. Serve para ser colocada na janela de edição de headers.
+*/
 char *GetHeadersString(HeaderField *headers, int headerCount){
 	int i, size = 0, valueSize = 0, nameSize = 0;
 	char buffer[1000000], *str;
