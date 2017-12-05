@@ -65,16 +65,6 @@ void *handleSocket(void *arg) {
 	logSuccess("Requisicao de conexao recebida.");
 	validation = ValidateRequest(request->hostname, request->body, request->bodySize, context->whitelist, context->blacklist, context->denyTerms);
 
-	if(validation->isOnBlacklist){
-		freeValidationResult(validation);
-		FreeHttpRequest(request);
-		response = blacklistResponseBuilder();
-		HttpSendResponse(context, response);
-		FreeHttpResponse(response);
-		freeResources(context);
-		pthread_exit(NULL);
-	}
-
 	if(validation->isOnWhitelist){
 		freeValidationResult(validation);
 
@@ -100,9 +90,17 @@ void *handleSocket(void *arg) {
 			freeResources(context);
 			pthread_exit(NULL);
 		}
-
 	}
 
+	if(validation->isOnBlacklist){
+		freeValidationResult(validation);
+		FreeHttpRequest(request);
+		response = blacklistResponseBuilder();
+		HttpSendResponse(context, response);
+		FreeHttpResponse(response);
+		freeResources(context);
+		pthread_exit(NULL);
+	}
 
 	if(validation->isOnDeniedTerms){
 		FreeHttpRequest(request);
@@ -138,7 +136,6 @@ void *handleSocket(void *arg) {
 			pthread_exit(NULL);
 		}
 	}
-
 
 	return NULL;
 }
