@@ -59,10 +59,10 @@ void *handleSocket(void *arg) {
 	HttpResponse *response = NULL;
 	ValidationResult *validation;
 
-	logSuccess("Tentativa de conexao recebida.");
+	//logSuccess("Tentativa de conexao recebida.");
 	request = httpReceiveRequest(context);
 	//RequestPrettyPrinter(request);
-	logSuccess("Requisicao de conexao recebida.");
+	//logSuccess("Requisicao de conexao recebida.");
 	validation = ValidateRequest(request->hostname, request->body, request->bodySize, context->whitelist, context->blacklist, context->denyTerms);
 
 	if(validation->isOnWhitelist){
@@ -86,11 +86,11 @@ void *handleSocket(void *arg) {
 		}
 
 		FreeHttpRequest(request);
-		logSuccess("Resposta recebida.");
+		//logSuccess("Resposta recebida.");
 
 		HttpSendResponse(context, response);
 		FreeHttpResponse(response);
-		logSuccess("Dados de resposta enviados.");
+		//logSuccess("Dados de resposta enviados.");
 		freeResources(context);
 		pthread_exit(NULL);
 	}
@@ -126,7 +126,6 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
-			printf("EXPIRED\n\n");
 			response = httpSendRequest(request);
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
@@ -134,7 +133,7 @@ void *handleSocket(void *arg) {
 		}
 
 		FreeHttpRequest(request);
-		logSuccess("Resposta recebida.");
+		//logSuccess("Resposta recebida.");
 
 		validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
 
@@ -149,7 +148,7 @@ void *handleSocket(void *arg) {
 		} else{
 			HttpSendResponse(context, response);
 			FreeHttpResponse(response);
-			logSuccess("Dados de resposta enviados.");
+			//logSuccess("Dados de resposta enviados.");
 			freeValidationResult(validation);
 			freeResources(context);
 			pthread_exit(NULL);
