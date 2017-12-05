@@ -52,11 +52,11 @@ extern int errno;
 */
 
 void *handleSocket(void *arg) {
-	int i;
+	//int i;
 
 	ThreadContext *context = (ThreadContext *)arg;
 	HttpRequest *request;
-	HttpResponse *response, *resp;
+	HttpResponse *response;
 	ValidationResult *validation;
 
 	logSuccess("Tentativa de conexao recebida.");
@@ -64,35 +64,82 @@ void *handleSocket(void *arg) {
 	//RequestPrettyPrinter(request);
 	logSuccess("Requisicao de conexao recebida.");
 	validation = ValidateRequest(request->hostname, request->body, request->bodySize, context->whitelist, context->blacklist, context->denyTerms);
-	response = httpSendRequest(request);
 
-	logSuccess("Resposta recebida.");
-	//ResponsePrettyPrinter(response);
-	//resp = httpParseResponse(response->raw);
-	//ResponsePrettyPrinter(resp);
+	if(validation->isOnBlacklist){
+		freeValidationResult(validation);
+		FreeHttpRequest(request);
+		response = blacklistResponseBuilder();
+		HttpSendResponse(context, response);
+		FreeHttpResponse(response);
+		freeResources(context);
+		pthread_exit(NULL);
+	}
 
-	freeValidationResult(validation);
+	if(validation->isOnWhitelist){
+		freeValidationResult(validation);
 
-	validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
-	HttpSendResponse(context, response);
-	logSuccess("Dados de resposta enviados.");
+		response = httpSendRequest(request);
+		FreeHttpRequest(request);
+		logSuccess("Resposta recebida.");
 
-	freeValidationResult(validation);
+		validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
 
-	// free(response->version);
-	// free(response->reasonPhrase);
-	// free(response->body);
-	// for (i = 0; i < response->headerCount; ++i){
-	// 	free(response->headers[i].name);
-	// 	free(response->headers[i].value);
-	// }
+		if(validation->isOnDeniedTerms){
+			FreeHttpResponse(response);
+			freeValidationResult(validation);
+			response = deniedTermsResponseBuilder(validation, TRUE);
+			HttpSendResponse(context, response);
+			FreeHttpResponse(response);
+			freeResources(context);
+			pthread_exit(NULL);
+		} else{
+			HttpSendResponse(context, response);
+			FreeHttpResponse(response);
+			logSuccess("Dados de resposta enviados.");
+			freeValidationResult(validation);
+			freeResources(context);
+			pthread_exit(NULL);
+		}
 
-	FreeHttpRequest(request);
-	//FreeHttpResponse(resp);
-	FreeHttpResponse(response);
-	logSuccess("Conexao fechada.");
-	printf("Conexao terminou.\n");
-	freeResources(context);
+	}
+
+
+	if(validation->isOnDeniedTerms){
+		FreeHttpRequest(request);
+		freeValidationResult(validation);
+		response = deniedTermsResponseBuilder(validation, FALSE);
+		HttpSendResponse(context, response);
+		FreeHttpResponse(response);
+		freeResources(context);
+		pthread_exit(NULL);
+	} else{
+		freeValidationResult(validation);
+
+		response = httpSendRequest(request);
+		FreeHttpRequest(request);
+		logSuccess("Resposta recebida.");
+
+		validation = ValidateResponse(response->body, response->bodySize, context->denyTerms);
+
+		if(validation->isOnDeniedTerms){
+			FreeHttpResponse(response);
+			freeValidationResult(validation);
+			response = deniedTermsResponseBuilder(validation, TRUE);
+			HttpSendResponse(context, response);
+			FreeHttpResponse(response);
+			freeResources(context);
+			pthread_exit(NULL);
+		} else{
+			HttpSendResponse(context, response);
+			FreeHttpResponse(response);
+			logSuccess("Dados de resposta enviados.");
+			freeValidationResult(validation);
+			freeResources(context);
+			pthread_exit(NULL);
+		}
+	}
+
+
 	return NULL;
 }
 
@@ -143,12 +190,12 @@ int main() {
 	denyTerms = getList("denyTerms.txt");
 
 	while(TRUE) {
-		printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);
+		//printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);
 		pthread_join(threads[nextThread], NULL);
-		printf("\n\n\n\n\n\n\n\n\n\nThread %d starting\n\n\n\n\n\n\n\n", nextThread);
+		//printf("\n\n\n\n\n\n\n\n\n\nThread %d starting\n\n\n\n\n\n\n\n", nextThread);
 		remote = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
 		rqstSocket = accept(srvSocket, (struct sockaddr*) remote, &sockAddrSize);
-		printf("\n\n\n\n\n\n\n\nremote address = %ld\n\n\n\n\n\n\n", remote->sin_addr.s_addr);
+		//printf("\n\n\n\n\n\n\n\nremote address = %ld\n\n\n\n\n\n\n", remote->sin_addr.s_addr);
 		context = (ThreadContext *)malloc(sizeof(ThreadContext));
 
 		context->sockAddr = remote;

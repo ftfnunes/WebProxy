@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "RequestValidator.h"
+#include <time.h>
 
 void freeResources(ThreadContext *context) {
 	close(context->socket);
@@ -944,7 +946,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 
 		*/
 		if(buff == '\n'){
-			bzero(buffer, 3000);
+			bzero(buffer, BUFFER_SIZE);
 			break;
 		}
 
@@ -968,12 +970,12 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 				strcpy(response->version, buffer);
 				response->version[size] = '\0';
 				//printf("-------------------------> Response Version: %s\n", response->version);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(response->statusCode == -1){
 				response->statusCode = (short)atoi(buffer);
 				//printf("-------------------------> Response Code: %d\n", response->statusCode);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			} else if(buff == '\r'){
 				response->reasonPhrase = (char *)malloc((size+1)*sizeof(char));
@@ -984,7 +986,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 				strcpy(response->reasonPhrase, buffer);
 				response->reasonPhrase[size] = '\0';
 				//printf("-------------------------> Response Phrase: %s\n", response->reasonPhrase);
-				bzero(buffer, 3000);
+				bzero(buffer, BUFFER_SIZE);
 				size = 0;
 			}
 
@@ -1004,6 +1006,7 @@ HttpResponse *httpParseResponse(char *resp, int length) {
 		Caso a resposta tenha corpo, ele é adquirido com a função getLocalBody, função que adquire o corpo a partir do Raw de uma requisição.
 	*/
 	if( has_body == 1 ){
+		response->bodySize = (length - req_size);
 		response->body = getLocalBody(resp, &req_size, (length - req_size));
 	}
 
@@ -1213,4 +1216,111 @@ void RequestPrettyPrinter(HttpRequest *request){
 	// 	printf("\n");
 	// }
 
+}
+
+
+HttpResponse *blacklistResponseBuilder(){
+	HttpResponse *response;
+	time_t now = time(0);
+	struct tm tm = *gmtime(&now);
+	char buffer[100];
+
+	bzero(buffer, 100);
+
+	response = (HttpResponse *)malloc(sizeof(HttpResponse));
+
+	response->version = NULL;
+	response->statusCode = 403;
+	response->reasonPhrase = NULL;
+	response->body = NULL;
+	response->headers = NULL;
+	response->headerCount = 2;
+	response->bodySize = 0;
+
+	response->version = (char *)calloc((strlen("HTTP/1.1")+1), sizeof(char));
+	strcpy(response->version, "HTTP/1.1");
+
+	response->reasonPhrase = (char *)calloc((strlen("Request denied: On Blacklist.")+1), sizeof(char));
+	strcpy(response->reasonPhrase, "Request denied: On Blacklist.");
+
+	response->headers = (HeaderField *)calloc(response->headerCount, sizeof(HeaderField));
+
+	response->headers[0].name = (char *)calloc((strlen("Connection")+1), sizeof(char));
+	strcpy(response->headers[0].name, "Connection");
+
+	response->headers[0].value = (char *)calloc((strlen("close")+1), sizeof(char));
+	strcpy(response->headers[0].value, "close");
+
+	response->headers[1].name = (char *)calloc((strlen("Date")+1), sizeof(char));
+	strcpy(response->headers[1].name, "Date");
+
+	strftime(buffer, sizeof buffer, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+	response->headers[1].value = (char *)calloc((strlen(buffer)+1), sizeof(char));
+	strcpy(response->headers[1].value, buffer);
+
+	// response->headers[2].name = (char *)calloc((strlen("Content-Type")+1), sizeof(char));
+	// strcpy(response->headers[2].name, "Content-Type");
+	//
+	// response->headers[2].value = (char *)calloc((strlen("text/html; charset=utf-8")+1), sizeof(char));
+	// strcpy(response->headers[2].value, "text/html; charset=utf-8");
+
+
+
+
+	return response;
+}
+
+HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_response){
+	HttpResponse *response;
+	time_t now = time(0);
+	struct tm tm = *gmtime(&now);
+	char buffer[100];
+
+	bzero(buffer, 100);
+
+	response = (HttpResponse *)malloc(sizeof(HttpResponse));
+
+	response->version = NULL;
+	response->statusCode = 403;
+	response->reasonPhrase = NULL;
+	response->body = NULL;
+	response->headers = NULL;
+	response->headerCount = 3;
+	response->bodySize = 0;
+
+	response->version = (char *)calloc((strlen("HTTP/1.1")+1), sizeof(char));
+	strcpy(response->version, "HTTP/1.1");
+	if(is_response){
+		sprintf(buffer, "Response denied on term '%s'", validation->deniedTerm);
+		response->reasonPhrase = (char *)calloc(strlen(buffer)+1, sizeof(char));
+	} else{
+		sprintf(buffer, "Request denied on term '%s'", validation->deniedTerm);
+		response->reasonPhrase = (char *)calloc(strlen(buffer)+1, sizeof(char));
+	}
+	strcpy(response->reasonPhrase, buffer);
+	bzero(buffer, 1000);
+
+
+	response->headers = (HeaderField *)calloc(response->headerCount, sizeof(HeaderField));
+
+	response->headers[0].name = (char *)calloc((strlen("Connection")+1), sizeof(char));
+	strcpy(response->headers[0].name, "Connection");
+
+	response->headers[0].value = (char *)calloc((strlen("close")+1), sizeof(char));
+	strcpy(response->headers[0].value, "close");
+
+	response->headers[1].name = (char *)calloc((strlen("Date")+1), sizeof(char));
+	strcpy(response->headers[1].name, "Date");
+
+	strftime(buffer, sizeof buffer, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+	response->headers[1].value = (char *)calloc((strlen(buffer)+1), sizeof(char));
+	strcpy(response->headers[1].value, buffer);
+
+	// response->headers[2].name = (char *)calloc((strlen("Content-Type")+1), sizeof(char));
+	// strcpy(response->headers[2].name, "Content-Type");
+	//
+	// response->headers[2].value = (char *)calloc((strlen("text/html; charset=utf-8")+1), sizeof(char));
+	// strcpy(response->headers[2].value, "text/html; charset=utf-8");
+
+	return response;
 }
