@@ -72,6 +72,7 @@ int main() {
 
     mockResponse->headers = (HeaderField *)malloc(3*sizeof(HeaderField));
     mockResponse->headerCount = 3;
+    mockResponse->bodySize = 0;
 
     mockResponse->headers[0].name = (char *)malloc(20*sizeof(char));
     mockResponse->headers[0].value = (char *)malloc(50*sizeof(char));
