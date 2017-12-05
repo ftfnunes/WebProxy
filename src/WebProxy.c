@@ -83,11 +83,8 @@ void *handleSocket(void *arg) {
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
 			}
-		} else {
-			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
 		}
 
-		response = httpSendRequest(request);
 		FreeHttpRequest(request);
 		logSuccess("Resposta recebida.");
 
@@ -129,13 +126,11 @@ void *handleSocket(void *arg) {
 				storeInCache(response, request);
 			}
 		} else if(isExpired(response)) {
-			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
+			printf("EXPIRED\n\n");
 			response = httpSendRequest(request);
 			if (shouldBeCached(response)) {
 				storeInCache(response, request);
 			}
-		} else {
-			printf("\n\n\n\n\n\n\n\n\nCACHE HIT\n\n\n\n\n\n\n\n\n");
 		}
 
 		FreeHttpRequest(request);
@@ -169,7 +164,7 @@ void sig_handler(int sigNum) {
 	exit(sigNum);
 }
 
-int main() {
+int main(int argc, char **argv) {
 	int srvSocket, rqstSocket;
 	struct sockaddr_in* remote;
 	struct sockaddr_in local;
@@ -179,12 +174,35 @@ int main() {
 	unsigned int sockAddrSize = (sizeof(struct sockaddr_in));
 	struct timeval tv;
 	List *whitelist, *blacklist, *denyTerms;
+	int numOfConnections = MAX_N_OF_CONNECTIONS;
+	int isInDebugMode = FALSE;
+
+	if (argc > 1) {
+		if (strcmp("debug", argv[1]) == 0) {
+			isInDebugMode = TRUE;
+		} else if (strcmp("-t", argv[1]) == 0) {
+			if (argc != 3) {
+				printf("Missing argumento for -t\n");
+				exit(1);
+			} else {
+				numOfConnections = atoi(argv[2]);
+				if (numOfConnections > MAX_N_OF_CONNECTIONS || numOfConnections < 1) {
+					printf("The number of connections must be below %d\n", MAX_N_OF_CONNECTIONS);
+					exit(1);
+				}
+			}
+		} else {
+			printf("Invalid argument\n");
+			exit(1);
+		}
+	}
+
+	if (isInDebugMode) {
+		numOfConnections = 1;
+	}
 
 
-//	signal(SIGBUS, sig_handler);
-
-
-	bzero(threads, MAX_N_OF_CONNECTIONS*sizeof(pthread_t));
+	bzero(threads, numOfConnections*sizeof(pthread_t));
 
 	initializeLog();
 	initializeCache();
@@ -204,12 +222,14 @@ int main() {
 		printf("Binding error %d\n", errno);
 		return 1;
 	}
-	listen(srvSocket, MAX_N_OF_CONNECTIONS);
+	listen(srvSocket, numOfConnections);
 
 	whitelist = getList("whitelist.txt");
 	blacklist = getList("blacklist.txt");
 	denyTerms = getList("denyTerms.txt");
 
+
+	printf("Web Proxy started...\n");
 	while(TRUE) {
 		//printf("\n\n\n\n\n\n\n\n\n\nThread %d waiting\n\n\n\n\n\n\n\n", nextThread);
 		pthread_join(threads[nextThread], NULL);
@@ -227,7 +247,7 @@ int main() {
 
 		pthread_create(&threads[nextThread], NULL, handleSocket, context);
 		++nextThread;
-		if(nextThread > MAX_N_OF_CONNECTIONS-1){
+		if(nextThread > numOfConnections-1){
 			nextThread = 0;
 		}
 	}
