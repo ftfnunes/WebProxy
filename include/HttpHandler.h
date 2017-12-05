@@ -6,6 +6,8 @@
 #include "Common.h"
 #include "Log.h"
 #include <errno.h>
+#include "RequestValidator.h"
+#include <time.h>
 
 #ifndef HTTP_HANDLER
 
@@ -90,5 +92,10 @@ int getChunkedSize(ThreadContext *context, char **body, int *bodySize);
 int sendRequest(ThreadContext *context, HttpRequest *request);
 
 void freeResources(ThreadContext *context);
+
+HttpResponse *blacklistResponseBuilder();
+
+HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_response);
+
 
 #endif
