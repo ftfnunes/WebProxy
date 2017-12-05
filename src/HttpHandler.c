@@ -1355,7 +1355,7 @@ HttpResponse *deniedTermsResponseBuilder(ValidationResult *validation, int is_re
 	return response;
 }
 
-char *GetHeadersString(HeaderField *headers, int headerCount, int *length){
+char *GetHeadersString(HeaderField *headers, int headerCount){
 	int i, size = 0, valueSize = 0, nameSize = 0;
 	char buffer[1000000], *str;
 
@@ -1366,11 +1366,10 @@ char *GetHeadersString(HeaderField *headers, int headerCount, int *length){
 		valueSize = strlen(headers[i].value);
 		sprintf(&(buffer[size]), "%s: %s\r\n", headers[i].name, headers[i].value);
 		size += valueSize + nameSize + 4;
-	}	
+	}
 
 	str = (char *)calloc(size+1, sizeof(char));
 	strcpy(str, buffer);
-	(*length) = size+1;
 
 	return str;
 }
